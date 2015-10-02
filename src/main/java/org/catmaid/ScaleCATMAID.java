@@ -178,7 +178,7 @@ public class ScaleCATMAID
 		final Graphics2D g = sourceImage.createGraphics();
 		final int[] sourcePixels = new int[ tileWidth * tileHeight * 4 ];
 
-		for ( long z = minZ; z <= maxZ; z++ )
+		for ( long z = minZ; z <= maxZ; ++z )
 		{
 			System.out.println( "z-index: " +  z );
 			boolean workToDo = true;
