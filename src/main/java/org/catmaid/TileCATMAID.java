@@ -184,21 +184,21 @@ public class TileCATMAID
 		/* CATMAID source stack */
 		final String sourceBaseUrl = System.getProperty( "sourceBaseUrl", "" );
 		p.sourceUrlFormat = System.getProperty( "sourceUrlFormat", sourceBaseUrl + "%5$d/%8$d_%9$d_%1$d.jpg" );
-		
+
 		p.sourceWidth = Long.parseLong( System.getProperty( "sourceWidth", "0" ) );
 		p.sourceHeight = Long.parseLong( System.getProperty( "sourceHeight", "0" ) );
 		p.sourceDepth = Long.parseLong( System.getProperty( "sourceDepth", "0" ) );
 		p.sourceScaleLevel = Long.parseLong( System.getProperty( "sourceScaleLevel", "0" ) );
-		
+
 		final int scaleXYDiv = 1 << p.sourceScaleLevel;
-		
+
 		p.sourceTileWidth = Integer.parseInt( System.getProperty( "sourceTileWidth", "256" ) );
 		p.sourceTileHeight = Integer.parseInt( System.getProperty( "sourceTileHeight", "256" ) );
 		p.sourceResXY = Double.parseDouble( System.getProperty( "sourceResXY", "1.0" ) );
 		p.sourceResZ = Double.parseDouble( System.getProperty( "sourceResZ", "1.0" ) );
-		
+
 		final double scaleZDiv = scaleXYDiv * p.sourceResXY / p.sourceResZ;
-		
+
 		/* export */
 		final long minX = Long.parseLong( System.getProperty( "minX", "0" ) );
 		final long minY = Long.parseLong( System.getProperty( "minY", "0" ) );
@@ -235,7 +235,7 @@ public class TileCATMAID
 					p.sourceInterval.dimension( 1 ) / scaleXYDiv,
 					( long )( p.sourceInterval.dimension( 2 ) / scaleZDiv ) );
 		}
-		
+
 		p.tileWidth = Integer.parseInt( System.getProperty( "tileWidth", "256" ) );
 		p.tileHeight = Integer.parseInt( System.getProperty( "tileHeight", "256" ) );
 		p.minZ = Long.parseLong( System.getProperty( "exportMinZ", "0" ) );
@@ -250,9 +250,9 @@ public class TileCATMAID
 		p.maxC = Long.parseLong( System.getProperty(
 				"exportMaxC",
 				Long.toString( ( long )Math.ceil( ( double )orientedSourceInterval.dimension( 0 ) / ( double )p.tileWidth ) - 1 ) ) );
-		
+
 		p.exportPath = System.getProperty( "exportBasePath", "" );
-		p.tilePattern = System.getProperty( "tilePattern", "<z>/<r>_<c>_<s>" );
+		p.tilePattern = System.getProperty( "tilePattern", "%5$d/%8$d_%9$d_%1$d" ); // default is z/row_col_scale
 		p.format = System.getProperty( "format", "jpg" );
 		p.quality = Float.parseFloat( System.getProperty( "quality", "0.85" ) );
 		final String type = System.getProperty( "type", "rgb" );

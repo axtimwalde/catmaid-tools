@@ -663,16 +663,15 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 				if ( cachedEntry != null )
 					return cachedEntry.data;
 			}
-			
+
 			final String urlString = String.format( urlFormat, s, scale, c * tileWidth, r * tileHeight, z, tileWidth, tileHeight, r, c );
 
 			final int[] pixels = new int[ tileWidth * tileHeight ];
 			try
 			{
 				final URL url = new URL( urlString );
-//				final Image image = toolkit.createImage( url );
-			    final BufferedImage jpg = ImageIO.read( url );
-			    
+				final BufferedImage jpg = ImageIO.read( url );
+
 				/* This gymnastic is necessary to get reproducible gray
 				 * values, just opening a JPG or PNG, even when saved by
 				 * ImageIO, and grabbing its pixels results in gray values
@@ -682,7 +681,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 				image.createGraphics().drawImage( jpg, 0, 0, null );
 				final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
 				pg.grabPixels();
-				
+
 				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
 //				System.out.println( "success loading r=" + r + " c=" + c + " url(" + urlString + ")" );
 				

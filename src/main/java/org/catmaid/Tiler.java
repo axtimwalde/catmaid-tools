@@ -38,7 +38,6 @@ import net.imglib2.view.Views;
  */
 public class Tiler
 {
-//	final static protected Toolkit toolkit = Toolkit.getDefaultToolkit();
 	final protected RandomAccessibleInterval< ARGBType > source;
 	
 	
@@ -117,33 +116,7 @@ public class Tiler
 		
 		copyTile( raiSource, raiTarget );
 	}
-	
-	
-	/**
-	 * Replace the ctile coordinates in a pattern string.
-	 * 
-	 * @param template
-	 * @param s scale-index (scale = 1/2<sup>s</sup>)
-	 * @param z z-index
-	 * @param r row
-	 * @param c column
-	 * @return
-	 */
-	final static protected String tileName(
-			final String template,
-			final long s,
-			final long z,
-			final long r,
-			final long c )
-	{
-		return template.
-				replace( "<s>", Long.toString( s ) ).
-				replace( "<z>", Long.toString( z ) ).
-				replace( "<r>", Long.toString( r ) ).
-				replace( "<c>", Long.toString( c ) );
-	}
-	
-	
+
 	/**
 	 * Generate a subset of a CATMAID tile stack of an {@link Interval} of the
 	 * source {@link RandomAccessibleInterval}.  That is you can choose the
@@ -238,17 +211,15 @@ public class Tiler
 					copyTile( sourceTile, tile, orientation == Orientation.ZY, new ARGBType( 0 ) );
 					img.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, tilePixels );
 					final BufferedImage imgCopy = Util.draw( img, type );
-					
 					final String tilePath =
-							new StringBuffer( exportPath ).
-							append( "/" ).
-							append( tileName( tilePattern, 0, z, r, c ) ).
-							append( "." ).
-							append( format ).
-							toString();
+							new StringBuffer(exportPath)
+								.append( "/" )
+								.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
+								.append( "." )
+								.append( format )
+								.toString();
 					
 					Util.writeTile( imgCopy, tilePath, format, quality );
-//					writePngTile( img, sectionPath + "/" + r + "_" + c + "_0.png" );
 				}
 			}
 		}
@@ -305,10 +276,6 @@ public class Tiler
 			maxR = ( long )Math.ceil( ( double )sourceInterval.dimension( 1 ) / ( double )tileHeight ) - 1;
 			maxZ = sourceInterval.dimension( 2 ) - 1;
 		}
-		
-//		System.out.println( "maxZ:" + maxZ );
-//		System.out.println( "maxR:" + maxR );
-//		System.out.println( "maxC:" + maxC );
 		
 		tile(
 				sourceInterval,
