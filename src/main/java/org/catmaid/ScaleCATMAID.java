@@ -100,8 +100,7 @@ public class ScaleCATMAID
 		p.maxZ = Long.parseLong( System.getProperty( "maxZ", "" + Long.MAX_VALUE ) );
 		final String basePath = System.getProperty( "basePath", "" );
 		p.format = System.getProperty( "format", "jpg" );
-		final String tileFormat = System.getProperty( "tileFormat", "%5$d/%8$d_%9$d_%1$d");
-		p.tileFormat = basePath + "/" + tileFormat + "." + p.format;
+		p.tileFormat = System.getProperty( "tileFormat", basePath + "%5$d/%8$d_%9$d_%1$d" + "." + p.format);
 
 		System.out.println("Tile pattern: " + p.tileFormat );
 
