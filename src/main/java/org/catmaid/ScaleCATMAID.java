@@ -72,10 +72,10 @@ public class ScaleCATMAID
 	{
 		public int tileWidth;
 		public int tileHeight;
-		public long minC;
-		public long maxC;
-		public long minR;
-		public long maxR;
+		public long minX;
+		public long width;
+		public long minY;
+		public long height;
 		public long minZ;
 		public long maxZ;
 		public String tileFormat;
@@ -92,10 +92,10 @@ public class ScaleCATMAID
 		p.tileWidth = Integer.parseInt( System.getProperty( "tileWidth", "256" ) );
 		p.tileHeight = Integer.parseInt( System.getProperty( "tileHeight", "256" ) );
 
-		p.minC = Long.parseLong( System.getProperty( "minC", "0" ) );
-		p.maxC = Long.parseLong( System.getProperty( "maxC", "" + Integer.MAX_VALUE ) );
-		p.minR = Long.parseLong( System.getProperty( "minR", "0" ) );
-		p.maxR = Long.parseLong( System.getProperty( "maxR", "" + Integer.MAX_VALUE ) );
+		p.minX = Long.parseLong( System.getProperty( "minX", "0" ) );
+		p.width = Long.parseLong( System.getProperty( "width", "-1") );
+		p.minY = Long.parseLong( System.getProperty( "minY", "0" ) );
+		p.height = Long.parseLong( System.getProperty( "height", "-1" ) );
 		p.minZ = Long.parseLong( System.getProperty( "minZ", "0" ) );
 		p.maxZ = Long.parseLong( System.getProperty( "maxZ", "" + Long.MAX_VALUE ) );
 		final String basePath = System.getProperty( "basePath", "" );
@@ -111,6 +111,18 @@ public class ScaleCATMAID
 		else
 			p.type = BufferedImage.TYPE_INT_RGB;
 		p.ignoreEmptyTiles = Boolean.valueOf(System.getProperty( "ignoreEmptyTiles"));
+		if (p.ignoreEmptyTiles) {
+			if (p.width < 0) {
+				throw new IllegalArgumentException("Width must be defined when empty files are not generated");
+			} else if (p.minX + p.width < 0) {
+				throw new IllegalArgumentException("Max X value overflow");
+			}
+			if (p.height < 0) {
+				throw new IllegalArgumentException("Height must be defined when empty files are not generated");
+			} else if (p.minY + p.height < 0) {
+				throw new IllegalArgumentException("Max Y value overflow");
+			}
+		}
 
 		return p;
 	}
@@ -120,9 +132,11 @@ public class ScaleCATMAID
 			final BufferedImage alternative,
 			final int type )
 	{
+		System.out.println("Read " + path);
 		final File file = new File( path );
 		if ( file.exists() )
 		{
+			System.out.println("Found " + path);
 			try
 			{
 				return ImageIO.read( new File( path ) );
@@ -158,9 +172,9 @@ public class ScaleCATMAID
 			final int tileWidth,
 			final int tileHeight,
 			final long minX,
-			final long maxX,
+			final long width,
 			final long minY,
-			final long maxY,
+			final long height,
 			final long minZ,
 			final long maxZ,
 			final String format,
@@ -177,11 +191,14 @@ public class ScaleCATMAID
 		final Graphics2D g = sourceImage.createGraphics();
 		final int[] sourcePixels = new int[ tileWidth * tileHeight * 4 ];
 
-		for ( long z = minZ; z <= maxZ; ++z )
+		final long maxY = height > 0 ? minY + height : -1;
+		final long maxX = width > 0 ? minX + width : -1;
+Z:		for ( long z = minZ; z <= maxZ; ++z )
 		{
 			System.out.println( "z-index: " +  z );
-			boolean workToDo = true;
-			for ( int s = 1; workToDo; ++s )
+			boolean proceedY = true;
+			boolean proceedX = true;
+S:			for ( int s = 1; proceedX || proceedY; ++s )
 			{
 				System.out.println( "scale: " +  s );
 				final int iScale = 1 << s;
@@ -192,13 +209,19 @@ public class ScaleCATMAID
 				final double scale1 = 1.0 / iScale1;
 				int nResultTiles = 0;
 
-				workToDo = false;
-				for ( long y = minY / iScale1; y < maxY / iScale1; y += 2 * tileHeight )
+				proceedY = true;
+Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 				{
-					workToDo = true;
+					if (maxY > 0 && y >= maxY / iScale1) {
+						break;
+					}
+					proceedX = true;
 					final long yt = y / (2 * tileHeight);
-					for ( long x = minX / iScale1; x < maxX / iScale1; x += 2 * tileWidth )
+					for ( long x = minX / iScale1; proceedX; x += 2 * tileWidth )
 					{
+						if (maxX > 0 && x >= maxX / iScale1) {
+							break;
+						}
 						nResultTiles++;
 						final long xt = x / (2 * tileWidth);
 						final Image imp1 = open(
@@ -206,16 +229,34 @@ public class ScaleCATMAID
 								alternative,
 								type );
 
+						if (maxX < 0) {
+							if (imp1 == alternative) {
+								if ( x == minX / iScale1 )
+									if ( y == minY / iScale1 )
+										break Z;
+									else
+										continue S;
+								else
+									continue Y;
+							}
+						}
 						final Image imp2 = open(
 								String.format( tileFormat, s1, scale1, ( x + tileWidth ) * iScale1, y * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt, 2 * xt + 1 ),
 								alternative,
 								type );
+
+						proceedX = maxX >= 0 || imp2 != alternative;
 
 						final Image imp3 = open(
 								String.format( tileFormat, s1, scale1, x * iScale1, ( y + tileHeight ) * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt + 1, 2 * xt ),
 								alternative,
 								type );
 
+						proceedY = maxY >= 0 || imp3 != alternative;
+
+						if (!proceedX && !proceedY && x == minX / iScale1 && y == minY / iScale1) {
+							break S;
+						}
 						final Image imp4 = open(
 								String.format( tileFormat, s1, scale1, ( x + tileWidth ) * iScale1, ( y + tileHeight ) * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt + 1, 2 * xt + 1 ),
 								alternative,
@@ -248,7 +289,8 @@ public class ScaleCATMAID
 					} // end for x
 				} // end for y
 				if (nResultTiles <= 1) {
-					workToDo = false;
+					proceedX = false;
+					proceedY = false;
 				}
 			} // end for s
 		} // end for z
@@ -259,10 +301,10 @@ public class ScaleCATMAID
 		scale(p.tileFormat,
 			p.tileWidth,
 			p.tileHeight,
-			p.minC * p.tileWidth,
-			(p.maxC + 1) * p.tileWidth, // include maxC
-			p.minR * p.tileHeight,
-			(p.maxR + 1) * p.tileHeight, // include maxR
+			adjustStart(p.minX, p.tileWidth),
+			adjustSize(p.width, p.tileWidth),
+			adjustStart(p.minY, p.tileHeight),
+			adjustSize(p.height, p.tileHeight),
 			p.minZ,
 			p.maxZ,
 			p.format,
@@ -271,7 +313,18 @@ public class ScaleCATMAID
 			p.ignoreEmptyTiles);
 	}
 
-	
+	private static final long adjustStart(long index, int tileSize) {
+		return index / tileSize * tileSize; // make it the start of the corresponding tile
+	}
+
+	private static final long adjustSize(long size, int tileSize) {
+		if (size > 0 && size % tileSize > 0) {
+			return size + tileSize - (size % tileSize); // make it the end of the corresponding tile
+		} else {
+			return size;
+		}
+	}
+
 	final static public void main( final String... args ) throws Exception
 	{
 		scale( parseParameters() );
