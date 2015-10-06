@@ -156,7 +156,7 @@ public class TileCATMAID
 		public int sourceTileHeight;
 		public double sourceResXY;
 		public double sourceResZ;
-		
+
 		/* export */
 		/* source interval (crop area) in isotropic pixel coordinates */
 		public Interval sourceInterval;
@@ -252,8 +252,8 @@ public class TileCATMAID
 				Long.toString( ( long )Math.ceil( ( double )orientedSourceInterval.dimension( 0 ) / ( double )p.tileWidth ) - 1 ) ) );
 
 		p.exportPath = System.getProperty( "exportBasePath", "" );
-		p.tilePattern = System.getProperty( "tilePattern", "%5$d/%8$d_%9$d_%1$d" ); // default is z/row_col_scale
 		p.format = System.getProperty( "format", "jpg" );
+		p.tilePattern = System.getProperty( "tilePattern", "%5$d/%8$d_%9$d_%1$d" + "." + p.format); // default is z/row_col_scale.jpg
 		p.quality = Float.parseFloat( System.getProperty( "quality", "0.85" ) );
 		final String type = System.getProperty( "type", "rgb" );
 		if ( type.equalsIgnoreCase( "gray" ) || type.equalsIgnoreCase( "grey" ) )

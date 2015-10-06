@@ -215,8 +215,6 @@ public class Tiler
 							new StringBuffer(exportPath)
 								.append( "/" )
 								.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
-								.append( "." )
-								.append( format )
 								.toString();
 					
 					Util.writeTile( imgCopy, tilePath, format, quality );
