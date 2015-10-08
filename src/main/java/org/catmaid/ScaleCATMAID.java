@@ -132,11 +132,9 @@ public class ScaleCATMAID
 			final BufferedImage alternative,
 			final int type )
 	{
-		System.out.println("Read " + path);
 		final File file = new File( path );
 		if ( file.exists() )
 		{
-			System.out.println("Found " + path);
 			try
 			{
 				return ImageIO.read( new File( path ) );
