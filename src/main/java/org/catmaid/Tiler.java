@@ -179,11 +179,7 @@ public class Tiler
 			view = source;
 			viewInterval = sourceInterval;
 		}
-		
-//		final long maxC = 
-//		final long maxR = ( long ) Math.ceil( ( double ) viewInterval.dimension( 1 ) / ( double ) tileHeight ) - 1;
-//		final long maxZ = viewInterval.dimension( 2 ) - 1;
-//		
+
 		final long[] min = new long[ 3 ];
 		final long[] size = new long[ 3 ];
 		size[ 2 ] = 1;
