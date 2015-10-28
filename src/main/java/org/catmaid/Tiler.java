@@ -212,8 +212,8 @@ public class Tiler
 					img.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, tilePixels );
 					final BufferedImage imgCopy = Util.draw( img, type );
 					final String tilePath =
-							new StringBuffer(exportPath)
-								.append( "/" )
+							new StringBuffer(exportPath != null && exportPath.trim().length() > 0 ? exportPath : "")
+								.append(exportPath != null && exportPath.trim().length() > 0 ? "/" : "")
 								.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
 								.toString();
 					
