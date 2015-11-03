@@ -174,6 +174,7 @@ public class TileCATMAID
 		public String format;
 		public float quality;
 		public int type;
+		public boolean ignoreEmptyTiles;
 		public TileCATMAID.Interpolation interpolation;
 	}
 	
@@ -260,7 +261,8 @@ public class TileCATMAID
 			p.type = BufferedImage.TYPE_BYTE_GRAY;
 		else
 			p.type = BufferedImage.TYPE_INT_RGB;
-		
+		p.ignoreEmptyTiles = Boolean.valueOf(System.getProperty( "ignoreEmptyTiles"));
+
 		final String interpolation = System.getProperty( "interpolation", "NN" );
 		if ( interpolation.equalsIgnoreCase( "nl" ) || interpolation.equalsIgnoreCase( "NL" ) )
 			p.interpolation = Interpolation.NL;
@@ -278,7 +280,7 @@ public class TileCATMAID
 	 * @param height of scale level 0 in pixels
 	 * @param depth	of scale level 0 in pixels
 	 * @param s scale level to be used, using anything &gt;0 will create an
-	 * 		accordingly scaled source stack 
+	 * 		accordingly scaled source stack
 	 * @param tileWidth
 	 * @param tileHeight
 	 * @param resXY <em>x,y</em>-resolution
@@ -288,7 +290,7 @@ public class TileCATMAID
 	 * 		to isotropic resolution (if that is desired, you will want to do
 	 * 		it when exporting re-sliced stacks, not when extracting at the
 	 * 		original orientation).
-	 *  
+	 *
 	 * @return
 	 */
 	static public Tiler fromCATMAID(
@@ -348,9 +350,6 @@ public class TileCATMAID
 		return new Tiler( scaled );
 	}
 	
-	
-	
-	
 	final static public void main( final String[] args ) throws Exception
 	{
 		final Param p = parseParameters();
@@ -394,6 +393,7 @@ public class TileCATMAID
 						p.tilePattern,
 						p.format,
 						p.quality,
-						p.type );
+						p.type,
+						p.ignoreEmptyTiles );
 	}
 }

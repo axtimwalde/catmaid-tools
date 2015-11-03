@@ -61,15 +61,20 @@ public class Tiler
 	 * @param sourceTile
 	 * @param targetTile
 	 */
-	final static protected < T extends Type< T > > void copyTile(
-			final RandomAccessibleInterval< T > sourceTile,
-			final RandomAccessibleInterval< T > targetTile )
+	final static private boolean copyTile(
+			final RandomAccessibleInterval< ARGBType > sourceTile,
+			final RandomAccessibleInterval< ARGBType > targetTile )
 	{
-		final Cursor< T > src = Views.flatIterable( sourceTile ).cursor();
-		final Cursor< T > dst = Views.flatIterable( targetTile ).cursor();
+		final Cursor< ARGBType > src = Views.flatIterable( sourceTile ).cursor();
+		final Cursor< ARGBType > dst = Views.flatIterable( targetTile ).cursor();
 
-		while ( src.hasNext() )
-			dst.next().set( src.next() );
+		boolean hasInfo = false;
+		while ( src.hasNext() ) {
+			ARGBType spixel = src.next();
+			if ((spixel.get() & 0xFFFFFF) != 0) hasInfo = true;
+			dst.next().set(spixel);
+		}
+		return hasInfo;
 	}
 	
 
@@ -85,7 +90,7 @@ public class Tiler
 	 * @param yx
 	 * @param bg background value
 	 */
-	final static protected void copyTile(
+	final static protected boolean copyTile(
 			final RandomAccessibleInterval< ARGBType > sourceTile,
 			final RandomAccessibleInterval< ARGBType > targetTile,
 			final boolean yx,
@@ -102,7 +107,7 @@ public class Tiler
 			for ( final ARGBType p : Views.iterable( targetTile ) )
 				p.set( bg );
 			
-			raiTarget = Views.interval( targetTile, sourceTile );			
+			raiTarget = Views.interval( targetTile, sourceTile );
 		}
 		
 		final RandomAccessibleInterval< ARGBType > raiSource;
@@ -114,7 +119,7 @@ public class Tiler
 		else
 			raiSource = sourceTile;
 		
-		copyTile( raiSource, raiTarget );
+		return copyTile( raiSource, raiTarget );
 	}
 
 	/**
@@ -156,7 +161,8 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles ) throws IOException
 	{
 		/* orientation */
 		final RandomAccessibleInterval< ARGBType > view;
@@ -204,16 +210,18 @@ public class Tiler
 
 					final RandomAccessibleInterval< ARGBType > sourceTile = Views.hyperSlice( Views.offsetInterval( view, min, size ), 2, 0 );
 
-					copyTile( sourceTile, tile, orientation == Orientation.ZY, new ARGBType( 0 ) );
-					img.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, tilePixels );
-					final BufferedImage imgCopy = Util.draw( img, type );
-					final String tilePath =
-							new StringBuffer(exportPath != null && exportPath.trim().length() > 0 ? exportPath : "")
-								.append(exportPath != null && exportPath.trim().length() > 0 ? "/" : "")
-								.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
-								.toString();
-					
-					Util.writeTile( imgCopy, tilePath, format, quality );
+					boolean tileIsNotEmpty = copyTile( sourceTile, tile, orientation == Orientation.ZY, new ARGBType( 0 ) );
+					if (tileIsNotEmpty || !ignoreEmptyTiles) {
+						img.getRaster().setDataElements(0, 0, tileWidth, tileHeight, tilePixels);
+						final BufferedImage imgCopy = Util.draw(img, type);
+						final String tilePath =
+								new StringBuffer(exportPath != null && exportPath.trim().length() > 0 ? exportPath : "")
+										.append(exportPath != null && exportPath.trim().length() > 0 ? "/" : "")
+										.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
+										.toString();
+
+						Util.writeTile(imgCopy, tilePath, format, quality);
+					}
 				}
 			}
 		}
@@ -247,7 +255,8 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles ) throws IOException
 	{
 		final long maxC;
 		final long maxR;
@@ -286,7 +295,8 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles );
 	}
 	
 	
@@ -314,7 +324,8 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles ) throws IOException
 	{
 		tile(
 				source,
@@ -325,7 +336,8 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles );
 	}
 	
 	
@@ -366,7 +378,8 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles ) throws IOException
 	{
 		tile(
 				source,
@@ -383,6 +396,7 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles );
 	}
 }
