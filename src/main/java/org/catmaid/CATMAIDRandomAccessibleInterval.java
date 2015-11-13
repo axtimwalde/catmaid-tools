@@ -42,7 +42,8 @@ import java.awt.image.PixelGrabber;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -590,14 +591,15 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			return copy();
 		}
 	}
-	
-	final protected HashMap< Key, SoftReference< Entry > > cache = new HashMap< CATMAIDRandomAccessibleInterval.Key, SoftReference< Entry > >();
-	final protected String urlFormat;
-	final protected long rows, cols, s;
-	final protected int tileWidth, tileHeight;
-	final protected double scale;
-	
-	
+
+	private static final int MAX_CACHE_SIZE = 25;
+
+	final private Map< Key, SoftReference< Entry > > cache;
+	final private String urlFormat;
+	final private long rows, cols, s;
+	final private int tileWidth, tileHeight;
+	final private double scale;
+
 	public CATMAIDRandomAccessibleInterval(
 			final String urlFormat,
 			final long width,
@@ -618,6 +620,13 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		max[ 0 ] = ( long )( width * scale ) - 1;
 		max[ 1 ] = ( long )( height * scale ) - 1;
 		max[ 2 ] = depth - 1;
+		cache =
+			new LinkedHashMap<Key, SoftReference< Entry >> (MAX_CACHE_SIZE * 10/7, 0.7f, true) {
+				@Override
+				protected boolean removeEldestEntry(Map.Entry<Key, SoftReference<Entry>> eldest) {
+					return size() > MAX_CACHE_SIZE;
+				}
+			};
 	}
 	
 	@Override
@@ -669,6 +678,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			final int[] pixels = new int[ tileWidth * tileHeight ];
 			try
 			{
+//				System.out.println( "Load r=" + r + " c=" + c + " url(" + urlString + ")" );
 				final URL url = new URL( urlString );
 				final BufferedImage jpg = ImageIO.read( url );
 

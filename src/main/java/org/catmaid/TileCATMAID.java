@@ -264,7 +264,7 @@ public class TileCATMAID
 		p.ignoreEmptyTiles = Boolean.valueOf(System.getProperty( "ignoreEmptyTiles"));
 
 		final String interpolation = System.getProperty( "interpolation", "NN" );
-		if ( interpolation.equalsIgnoreCase( "nl" ) || interpolation.equalsIgnoreCase( "NL" ) )
+		if ( interpolation.equalsIgnoreCase( "NL" ) )
 			p.interpolation = Interpolation.NL;
 		else
 			p.interpolation = Interpolation.NN;

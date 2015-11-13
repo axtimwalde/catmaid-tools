@@ -189,11 +189,11 @@ public class Tiler
 		final long[] min = new long[ 3 ];
 		final long[] size = new long[ 3 ];
 		size[ 2 ] = 1;
-		
+
 		final int[] tilePixels = new int[ tileWidth * tileHeight ];
 		final ArrayImg< ARGBType, IntArray > tile = ArrayImgs.argbs( tilePixels, tileWidth, tileHeight );
 		final BufferedImage img = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
-		
+
 		for ( long z = minZ; z <= maxZ; ++z )
 		{
 			min[ 2 ] = z + viewInterval.min( 2 );
