@@ -175,6 +175,7 @@ public class TileCATMAID
 		public float quality;
 		public int type;
 		public boolean ignoreEmptyTiles;
+		public int bgValue;
 		public TileCATMAID.Interpolation interpolation;
 	}
 	
@@ -262,6 +263,7 @@ public class TileCATMAID
 		else
 			p.type = BufferedImage.TYPE_INT_RGB;
 		p.ignoreEmptyTiles = Boolean.valueOf(System.getProperty( "ignoreEmptyTiles"));
+		p.bgValue = Integer.valueOf(System.getProperty( "bgValue", "0"));
 
 		final String interpolation = System.getProperty( "interpolation", "NN" );
 		if ( interpolation.equalsIgnoreCase( "NL" ) )
@@ -394,6 +396,7 @@ public class TileCATMAID
 						p.format,
 						p.quality,
 						p.type,
-						p.ignoreEmptyTiles );
+						p.ignoreEmptyTiles,
+						p.bgValue );
 	}
 }

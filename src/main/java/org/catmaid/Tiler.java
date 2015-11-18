@@ -26,7 +26,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.array.IntArray;
-import net.imglib2.type.Type;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
@@ -63,7 +62,8 @@ public class Tiler
 	 */
 	final static private boolean copyTile(
 			final RandomAccessibleInterval< ARGBType > sourceTile,
-			final RandomAccessibleInterval< ARGBType > targetTile )
+			final RandomAccessibleInterval< ARGBType > targetTile,
+			final ARGBType bg )
 	{
 		final Cursor< ARGBType > src = Views.flatIterable( sourceTile ).cursor();
 		final Cursor< ARGBType > dst = Views.flatIterable( targetTile ).cursor();
@@ -71,7 +71,9 @@ public class Tiler
 		boolean hasInfo = false;
 		while ( src.hasNext() ) {
 			ARGBType spixel = src.next();
-			if ((spixel.get() & 0xFFFFFF) != 0) hasInfo = true;
+			if ((spixel.get() & 0xFFFFFF) != bg.get()) {
+				hasInfo = true;
+			}
 			dst.next().set(spixel);
 		}
 		return hasInfo;
@@ -90,7 +92,7 @@ public class Tiler
 	 * @param yx
 	 * @param bg background value
 	 */
-	final static protected boolean copyTile(
+	final static private boolean copyTile(
 			final RandomAccessibleInterval< ARGBType > sourceTile,
 			final RandomAccessibleInterval< ARGBType > targetTile,
 			final boolean yx,
@@ -119,7 +121,7 @@ public class Tiler
 		else
 			raiSource = sourceTile;
 		
-		return copyTile( raiSource, raiTarget );
+		return copyTile( raiSource, raiTarget, bg );
 	}
 
 	/**
@@ -162,7 +164,8 @@ public class Tiler
 			final String format,
 			final float quality,
 			final int type,
-			final boolean ignoreEmptyTiles ) throws IOException
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		/* orientation */
 		final RandomAccessibleInterval< ARGBType > view;
@@ -193,6 +196,7 @@ public class Tiler
 		final int[] tilePixels = new int[ tileWidth * tileHeight ];
 		final ArrayImg< ARGBType, IntArray > tile = ArrayImgs.argbs( tilePixels, tileWidth, tileHeight );
 		final BufferedImage img = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
+		final ARGBType bg = new ARGBType( ARGBType.rgba(bgValue, bgValue, bgValue, 0) );
 
 		for ( long z = minZ; z <= maxZ; ++z )
 		{
@@ -210,7 +214,7 @@ public class Tiler
 
 					final RandomAccessibleInterval< ARGBType > sourceTile = Views.hyperSlice( Views.offsetInterval( view, min, size ), 2, 0 );
 
-					boolean tileIsNotEmpty = copyTile( sourceTile, tile, orientation == Orientation.ZY, new ARGBType( 0 ) );
+					boolean tileIsNotEmpty = copyTile( sourceTile, tile, orientation == Orientation.ZY, bg );
 					if (tileIsNotEmpty || !ignoreEmptyTiles) {
 						img.getRaster().setDataElements(0, 0, tileWidth, tileHeight, tilePixels);
 						final BufferedImage imgCopy = Util.draw(img, type);
@@ -256,7 +260,8 @@ public class Tiler
 			final String format,
 			final float quality,
 			final int type,
-			final boolean ignoreEmptyTiles ) throws IOException
+			final boolean ignoreEmptyTiles,
+			final int bgValue) throws IOException
 	{
 		final long maxC;
 		final long maxR;
@@ -296,7 +301,8 @@ public class Tiler
 				format,
 				quality,
 				type,
-				ignoreEmptyTiles );
+				ignoreEmptyTiles,
+				bgValue );
 	}
 	
 	
@@ -325,7 +331,8 @@ public class Tiler
 			final String format,
 			final float quality,
 			final int type,
-			final boolean ignoreEmptyTiles ) throws IOException
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		tile(
 				source,
@@ -337,7 +344,8 @@ public class Tiler
 				format,
 				quality,
 				type,
-				ignoreEmptyTiles );
+				ignoreEmptyTiles,
+				bgValue );
 	}
 	
 	
@@ -379,7 +387,8 @@ public class Tiler
 			final String format,
 			final float quality,
 			final int type,
-			final boolean ignoreEmptyTiles ) throws IOException
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		tile(
 				source,
@@ -397,6 +406,7 @@ public class Tiler
 				format,
 				quality,
 				type,
-				ignoreEmptyTiles );
+				ignoreEmptyTiles,
+				bgValue );
 	}
 }
