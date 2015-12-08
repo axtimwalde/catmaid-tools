@@ -146,6 +146,8 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
+	 * @param zScaleFactor the step factor for z scanning
 	 * @throws IOException
 	 */
 	public void tile(
@@ -165,7 +167,8 @@ public class Tiler
 			final float quality,
 			final int type,
 			final boolean ignoreEmptyTiles,
-			final int bgValue ) throws IOException
+			final int bgValue,
+			final double zStepFactor ) throws IOException
 	{
 		/* orientation */
 		final RandomAccessibleInterval< ARGBType > view;
@@ -178,7 +181,7 @@ public class Tiler
 					new long[]{ sourceInterval.min( 0 ), sourceInterval.min( 2 ), sourceInterval.min( 1 ) },
 					new long[]{ sourceInterval.max( 0 ), sourceInterval.max( 2 ), sourceInterval.max( 1 ) } );
 			break;
-		case ZY:
+		case ZY:	
 			view = Views.permute( source, 0, 2 );
 			viewInterval = new FinalInterval(
 					new long[]{ sourceInterval.min( 2 ), sourceInterval.min( 1 ), sourceInterval.min( 0 ) },
@@ -197,18 +200,19 @@ public class Tiler
 		final ArrayImg< ARGBType, IntArray > tile = ArrayImgs.argbs( tilePixels, tileWidth, tileHeight );
 		final BufferedImage img = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
 		final ARGBType bg = new ARGBType( ARGBType.rgba(bgValue, bgValue, bgValue, 0) );
+		final long zStep = (long) Math.max(zStepFactor, 1);
 
-		for ( long z = minZ; z <= maxZ; ++z )
+		for ( long z = minZ; z <= maxZ; z += zStep )
 		{
-			min[ 2 ] = z + viewInterval.min( 2 );
+			min[ 2 ] = z;
 			for ( long r = minR; r <= maxR; ++r )
 			{
-				min[ 1 ] = r * tileHeight + viewInterval.min( 1 );
+				min[ 1 ] = r * tileHeight;
 				final long max1 = Math.min( viewInterval.max( 1 ), min[ 1 ] + tileHeight - 1 );
 				size[ 1 ] = max1 - min[ 1 ] + 1;
 				for ( long c = minC; c <= maxC; ++c )
 				{
-					min[ 0 ] = c * tileWidth + viewInterval.min( 0 );
+					min[ 0 ] = c * tileWidth;
 					final long max0 = Math.min( viewInterval.max( 0 ), min[ 0 ] + tileWidth - 1 );
 					size[ 0 ] = max0 - min[ 0 ] + 1;
 
@@ -237,7 +241,7 @@ public class Tiler
 	 * {@link RandomAccessibleInterval}.  That is you can choose the
 	 * window to be exported.
 	 * 
-	 * @param sourceInterval the interval of the source to be exported 
+	 * @param sourceInterval the interval of the source to be exported
 	 * @param orientation the export orientation
 	 * @param tileWidth
 	 * @param tileHeight
@@ -248,6 +252,8 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
+	 * @param zStepFactor the step factor for z scanning
 	 * @throws IOException
 	 */
 	public void tile(
@@ -261,7 +267,8 @@ public class Tiler
 			final float quality,
 			final int type,
 			final boolean ignoreEmptyTiles,
-			final int bgValue) throws IOException
+			final int bgValue,
+			final double zStepFactor ) throws IOException
 	{
 		final long maxC;
 		final long maxR;
@@ -302,7 +309,8 @@ public class Tiler
 				quality,
 				type,
 				ignoreEmptyTiles,
-				bgValue );
+				bgValue,
+				zStepFactor );
 	}
 	
 	
@@ -320,6 +328,8 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
+	 * @param zStepFactor the step factor for z scanning
 	 * @throws IOException
 	 */
 	public void tile(
@@ -332,7 +342,8 @@ public class Tiler
 			final float quality,
 			final int type,
 			final boolean ignoreEmptyTiles,
-			final int bgValue ) throws IOException
+			final int bgValue,
+			final double zStepFactor ) throws IOException
 	{
 		tile(
 				source,
@@ -345,7 +356,8 @@ public class Tiler
 				quality,
 				type,
 				ignoreEmptyTiles,
-				bgValue );
+				bgValue,
+				zStepFactor );
 	}
 	
 	
@@ -370,6 +382,8 @@ public class Tiler
 	 * @param quality quality for jpg-compression if format is "jpg"
 	 * @param type the type of export tiles, e.g.
 	 * 		{@link BufferedImage#TYPE_BYTE_GRAY}
+	 * @param bgValue background pixel value
+	 * @param zStepFactor the step factor for z scanning
 	 * @throws IOException
 	 */
 	public void tile(
@@ -388,7 +402,8 @@ public class Tiler
 			final float quality,
 			final int type,
 			final boolean ignoreEmptyTiles,
-			final int bgValue ) throws IOException
+			final int bgValue,
+			final double zStepFactor ) throws IOException
 	{
 		tile(
 				source,
@@ -407,6 +422,7 @@ public class Tiler
 				quality,
 				type,
 				ignoreEmptyTiles,
-				bgValue );
+				bgValue,
+				zStepFactor );
 	}
 }
