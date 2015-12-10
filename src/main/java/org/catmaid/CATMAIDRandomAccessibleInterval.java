@@ -140,9 +140,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		{
 			synchronized ( cache )
 			{
-//				System.out.println( "finalizing..." );
 				cache.remove( key );
-//				System.out.println( cache.size() + " tiles chached." );
 			}
 		}
 	}
@@ -687,7 +685,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 				 * ImageIO, and grabbing its pixels results in gray values
 				 * with a non-matching gamma transfer function, I cannot tell
 				 * why... */
-			    final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
+				final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
 				image.createGraphics().drawImage( jpg, 0, 0, null );
 				final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
 				pg.grabPixels();

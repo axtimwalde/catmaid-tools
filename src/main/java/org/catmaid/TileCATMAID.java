@@ -432,6 +432,6 @@ public class TileCATMAID
 						p.type,
 						p.ignoreEmptyTiles,
 						p.bgValue,
-						p.sourceResZ / p.sourceResXY );
+						(1 << p.sourceScaleLevel));
 	}
 }
