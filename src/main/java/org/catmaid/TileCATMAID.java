@@ -160,7 +160,8 @@ public class TileCATMAID
 		/* export */
 		/* source interval (crop area) in isotropic pixel coordinates */
 		public Interval sourceInterval;
-		public Interval realWorldOrientedCroppedInterval;
+		public Interval scaledInterval;
+		public Interval orientedScaledInterval;
 		public Tiler.Orientation orientation;
 		public int tileWidth;
 		public int tileHeight;
@@ -212,82 +213,67 @@ public class TileCATMAID
 				new long[]{ minX, minY, minZ },
 				new long[]{ minX + width - 1, minY + height - 1, minZ + depth - 1 } );
 		final String orientation = System.getProperty( "orientation", "xy" );
-		final double tileWidth;
-		final double tileHeight;
-		final double zFactor;
+		final double scaleXY = (1 << p.sourceScaleLevel);
+		final double scaleZ = scaleXY * p.sourceResXY / p.sourceResZ;
+		final long exportedMinX = scale(Long.parseLong( System.getProperty( "exportedMinX", "0" ) ), scaleXY);
+		final long exportedMinY = scale(Long.parseLong( System.getProperty( "exportedMinY", "0" ) ), scaleXY);
+		final long exportedMinZ = scale(Long.parseLong( System.getProperty( "exportedMinZ", "0" ) ), scaleZ);
+		final long exportedWidth = scale(Long.parseLong( System.getProperty( "exportedWidth",
+				Long.toString(p.sourceInterval.dimension(0)) ) ), scaleXY);
+		final long exportedHeight = scale(Long.parseLong( System.getProperty( "exportedHeight",
+				Long.toString(p.sourceInterval.dimension(1)) ) ), scaleXY);
+		final long exportedDepth = scale(Long.parseLong( System.getProperty( "exportedDepth",
+				Long.toString(p.sourceInterval.dimension(2)) ) ), scaleZ);
+
+		p.scaledInterval = new FinalInterval(
+			new long[] { exportedMinX, exportedMinY, exportedMinZ },
+			new long[] { exportedMinX + exportedWidth, exportedMinY + exportedHeight, exportedMinZ + exportedDepth}
+		);
+
 		if ( orientation.equalsIgnoreCase( "xz" ) )
 		{
 			p.orientation = Orientation.XZ;
-			p.realWorldOrientedCroppedInterval = new FinalInterval(
+			p.orientedScaledInterval = new FinalInterval(
 					new long[] {
-							(long) (p.sourceInterval.min(0) * p.sourceResXY),
-							(long) (p.sourceInterval.min(2) * p.sourceResZ),
-							(long) (p.sourceInterval.min(1) * p.sourceResXY)
+							p.scaledInterval.min(0),
+							p.scaledInterval.min(2),
+							p.scaledInterval.min(1)
 					},
 					new long[]{
-							(long) (p.sourceInterval.max(0) * p.sourceResXY),
-							(long) (p.sourceInterval.max(2) * p.sourceResZ),
-							(long) (p.sourceInterval.max(1) * p.sourceResXY)
+							p.scaledInterval.max(0),
+							p.scaledInterval.max(2),
+							p.scaledInterval.max(1)
 					}
 			);
-			tileWidth = p.tileWidth * p.sourceResXY;
-			tileHeight = p.tileHeight * p.sourceResZ;
-			zFactor = p.sourceResXY;
 		}
 		else if ( orientation.equalsIgnoreCase( "zy" ) )
 		{
 			p.orientation = Orientation.ZY;
-			p.realWorldOrientedCroppedInterval = new FinalInterval(
+			p.orientedScaledInterval = new FinalInterval(
 					new long[] {
-							(long) (p.sourceInterval.min(2) * p.sourceResZ),
-							(long) (p.sourceInterval.min(1) * p.sourceResXY),
-							(long) (p.sourceInterval.min(0) * p.sourceResXY)
+							p.scaledInterval.min(2),
+							p.scaledInterval.min(1),
+							p.scaledInterval.min(0)
 					},
-					new long[] {
-							(long) (p.sourceInterval.max(2) * p.sourceResZ),
-							(long) (p.sourceInterval.max(1) * p.sourceResXY),
-							(long) (p.sourceInterval.max(0) * p.sourceResXY)
+					new long[]{
+							p.scaledInterval.max(2),
+							p.scaledInterval.max(1),
+							p.scaledInterval.max(0)
 					}
 			);
-			tileWidth = p.tileWidth * p.sourceResZ;
-			tileHeight = p.tileHeight * p.sourceResXY;
-			zFactor = p.sourceResXY;
 		}
 		else
 		{
 			p.orientation = Orientation.XY;
-			p.realWorldOrientedCroppedInterval = new FinalInterval(
-					new long[] {
-							(long) (p.sourceInterval.min(0) * p.sourceResXY),
-							(long) (p.sourceInterval.min(1) * p.sourceResXY),
-							(long) (p.sourceInterval.min(2) * p.sourceResZ)
-					},
-					new long[] {
-							(long) (p.sourceInterval.max(0) * p.sourceResXY),
-							(long) (p.sourceInterval.max(1) * p.sourceResXY),
-							(long) (p.sourceInterval.max(2) * p.sourceResZ)
-					}
-			);
-			tileWidth = p.tileWidth * p.sourceResXY;
-			tileHeight = p.tileHeight * p.sourceResXY;
-			zFactor = p.sourceResZ;
+			p.orientedScaledInterval = new FinalInterval(p.scaledInterval);
 		}
 
-		p.minZ = Long.parseLong( System.getProperty( "exportMinZ",
-				Long.toString( ( long )(p.realWorldOrientedCroppedInterval.min( 2 ) / zFactor ) ) ) );
-		p.maxZ = Long.parseLong( System.getProperty(
-				"exportMaxZ",
-				Long.toString( ( long )Math.ceil( ( double )p.realWorldOrientedCroppedInterval.max( 2 ) / zFactor ) - 1 ) ) );
-		p.minR = Long.parseLong( System.getProperty( "exportMinR",
-				Long.toString( ( long )(p.realWorldOrientedCroppedInterval.min( 1 ) / tileHeight ) ) ) );
-		p.maxR = Long.parseLong( System.getProperty(
-				"exportMaxR",
-				Long.toString( ( long )Math.ceil( ( double )p.realWorldOrientedCroppedInterval.max( 1 ) / tileHeight ) - 1 ) ) );
-		p.minC = Long.parseLong( System.getProperty( "exportMinC" ,
-				Long.toString( ( long )( p.realWorldOrientedCroppedInterval.min( 0 ) / tileWidth ) ) ) );
-		p.maxC = Long.parseLong( System.getProperty(
-				"exportMaxC",
-				Long.toString( ( long )Math.ceil( ( double )p.realWorldOrientedCroppedInterval.max( 0 ) / tileWidth ) - 1 ) ) );
+		p.minZ = p.orientedScaledInterval.min( 2 );
+		p.maxZ = p.orientedScaledInterval.max( 2 );
+		p.minR = ( long )(p.orientedScaledInterval.min( 1 ) / ( double )p.tileHeight );
+		p.maxR = ( long )Math.ceil(p.orientedScaledInterval.max( 1 ) / ( double )p.tileHeight - 1);
+		p.minC = ( long )(p.orientedScaledInterval.min( 0 ) / ( double )p.tileWidth );
+		p.maxC = ( long )Math.ceil(p.orientedScaledInterval.max( 0 ) / ( double )p.tileWidth - 1);
 
 		p.exportPath = System.getProperty( "exportBasePath", "" );
 		p.format = System.getProperty( "format", "jpg" );
@@ -310,6 +296,10 @@ public class TileCATMAID
 		return p;
 	}
 
+	private static long scale(long val, double scaleFactor) {
+		return (long) (val / scaleFactor);
+	}
+
 	/**
 	 * Create a {@link Tiler} from a CATMAID stack.
 	 * 
@@ -322,7 +312,7 @@ public class TileCATMAID
 	 * @param tileWidth
 	 * @param tileHeight
 	 * @param resXY <em>x,y</em>-resolution
-	 * @param cropped interval in CATMAID scale level 0 pixels
+	 * @param offset in CATMAID scale level 0 pixels
 	 * @param resZ <em>z</em>-resolution, what matters is only the ratio
 	 * 		between <em>z</em>- and <em>x,y</em>-resolution to scale the source
 	 * 		to isotropic resolution (if that is desired, you will want to do
@@ -341,7 +331,7 @@ public class TileCATMAID
 			final int tileHeight,
 			final double resXY,
 			final double resZ,
-			final Interval croppedInterval,
+			final RealLocalizable offset,
 			final Interpolation interpolation )
 	{
 		final CATMAIDRandomAccessibleInterval catmaidStack =
@@ -355,19 +345,17 @@ public class TileCATMAID
 						tileHeight );
 
 		/* scale and re-raster */
-		final double scaleXY = resXY * (1 << s);
-		final double scaleZ = resZ;
-		final RealPoint offset = new RealPoint( 3 );
-		croppedInterval.min(offset);
-
-		final double offsetX = offset.getDoublePosition( 0 ) * resXY;
-		final double offsetY = offset.getDoublePosition( 1 ) * resXY;
-		final double offsetZ = offset.getDoublePosition( 2 ) * resZ;
+		final double scaleXY = 1.0 / ( 1 << s );
+		final double scaleZ = resZ / resXY * scaleXY;
+		
+		final double offsetX = offset.getDoublePosition( 0 ) * scaleXY;
+		final double offsetY = offset.getDoublePosition( 1 ) * scaleXY;
+		final double offsetZ = offset.getDoublePosition( 2 ) * scaleZ;
 
 		final AffineTransform3D transform = new AffineTransform3D();
 		transform.set(
-				scaleXY, 0, 0, -offsetX,
-				0, scaleXY, 0, -offsetY,
+				1, 0, 0, -offsetX,
+				0, 1, 0, -offsetY,
 				0, 0, scaleZ, -offsetZ );
 		final RealRandomAccessible< ARGBType > interpolatedStack;
 		switch ( interpolation )
@@ -383,25 +371,28 @@ public class TileCATMAID
 				Views.interval(
 						scaledInterpolatedStack,
 						new FinalInterval(
-								new long[] {
-									(long) offsetX,
-									(long) offsetY,
-									(long) offsetZ
-								},
-								new long[] {
-									(long) (offsetX + resXY * croppedInterval.dimension(0)),
-									(long) (offsetY + resXY * croppedInterval.dimension(1)),
-									(long) (offsetZ + resZ * croppedInterval.dimension(2))
-								}
-						) );
+								( long )( scaleXY * width - offsetX ),
+								( long )( scaleXY * height - offsetY ),
+								( long )( scaleZ * depth - offsetZ ) ) );
 		return new Tiler( croppedView );
 	}
 
-	final static public void main( final String[] args ) throws Exception
+	public static void main( final String[] args ) throws Exception
 	{
 		final Param p = parseParameters();
 
 		System.out.println( "sourceInterval: " + Util.printInterval( p.sourceInterval ) );
+
+		final RealPoint min = new RealPoint( 3 );
+		p.sourceInterval.min( min );
+
+		final int scaleXYDiv = 1 << p.sourceScaleLevel;
+		final double scaleZDiv = scaleXYDiv * p.sourceResXY / p.sourceResZ;
+		
+		final FinalInterval croppedDimensions = new FinalInterval(
+				p.sourceInterval.dimension( 0 ) / scaleXYDiv,
+				p.sourceInterval.dimension( 1 ) / scaleXYDiv,
+				( long )( p.sourceInterval.dimension( 2 ) / scaleZDiv ) );
 
 		fromCATMAID(
 				p.sourceUrlFormat,
@@ -413,9 +404,9 @@ public class TileCATMAID
 				p.sourceTileHeight,
 				p.sourceResXY,
 				p.sourceResZ,
-				p.sourceInterval,
+				min,
 				p.interpolation ).tile(
-						p.sourceInterval,
+						croppedDimensions,
 						p.orientation,
 						p.tileWidth,
 						p.tileHeight,
@@ -431,7 +422,6 @@ public class TileCATMAID
 						p.quality,
 						p.type,
 						p.ignoreEmptyTiles,
-						p.bgValue,
-						(1 << p.sourceScaleLevel));
+						p.bgValue);
 	}
 }

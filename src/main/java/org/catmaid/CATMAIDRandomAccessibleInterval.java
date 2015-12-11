@@ -590,7 +590,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		}
 	}
 
-	private static final int MAX_CACHE_SIZE = 25;
+	private static final int MAX_CACHE_SIZE = 2048;
 
 	final private Map< Key, SoftReference< Entry > > cache;
 	final private String urlFormat;
