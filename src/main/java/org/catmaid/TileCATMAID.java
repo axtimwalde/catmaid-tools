@@ -301,7 +301,7 @@ public class TileCATMAID
 			p.interpolation = Interpolation.NL;
 		else
 			p.interpolation = Interpolation.NN;
-		p.tileCacheSize = Integer.valueOf(System.getProperty( "tileCacheSize", "1024" ));
+		p.tileCacheSize = Integer.valueOf(System.getProperty( "tileCacheSize", "0" ));
 		return p;
 	}
 
