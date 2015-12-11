@@ -605,7 +605,8 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			final long depth,
 			final long s,
 			final int tileWidth,
-			final int tileHeight )
+			final int tileHeight,
+			final int cacheSize )
 	{
 		super( 3 );
 		this.urlFormat = urlFormat;
@@ -619,7 +620,12 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		max[ 1 ] = ( long )( height * scale ) - 1;
 		max[ 2 ] = depth - 1;
 		cache =
-			new LinkedHashMap<Key, SoftReference< Entry >> (MAX_CACHE_SIZE * 10/7, 0.7f, true) {
+			new LinkedHashMap<Key, SoftReference< Entry >> (
+					(cacheSize > 0 ? cacheSize : MAX_CACHE_SIZE) * 10/7,
+					0.7f,
+					true) {
+				private static final long serialVersionUID = 1L;
+
 				@Override
 				protected boolean removeEldestEntry(Map.Entry<Key, SoftReference<Entry>> eldest) {
 					return size() > MAX_CACHE_SIZE;

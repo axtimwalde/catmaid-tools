@@ -18,7 +18,6 @@ package org.catmaid;
 
 import java.awt.image.BufferedImage;
 
-import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessible;
@@ -144,44 +143,45 @@ public class TileCATMAID
 {
 	static public enum Interpolation { NN, NL };
 	
-	static protected class Param
+	static private class Param
 	{
 		/* CATMAID source stack, representing an xyz-orientation */
-		public String sourceUrlFormat;
-		public long sourceWidth;
-		public long sourceHeight;
-		public long sourceDepth;
-		public long sourceScaleLevel;
-		public int sourceTileWidth;
-		public int sourceTileHeight;
-		public double sourceResXY;
-		public double sourceResZ;
+		String sourceUrlFormat;
+		long sourceWidth;
+		long sourceHeight;
+		long sourceDepth;
+		long sourceScaleLevel;
+		int sourceTileWidth;
+		int sourceTileHeight;
+		double sourceResXY;
+		double sourceResZ;
 
 		/* export */
 		/* source interval (crop area) in isotropic pixel coordinates */
-		public Interval sourceInterval;
-		public Interval scaledInterval;
-		public Interval orientedScaledInterval;
-		public Tiler.Orientation orientation;
-		public int tileWidth;
-		public int tileHeight;
-		public long minZ;
-		public long maxZ;
-		public long minR;
-		public long maxR;
-		public long minC;
-		public long maxC;
-		public String exportPath;
-		public String tilePattern;
-		public String format;
-		public float quality;
-		public int type;
-		public boolean ignoreEmptyTiles;
-		public int bgValue;
-		public TileCATMAID.Interpolation interpolation;
+		Interval sourceInterval;
+		Interval scaledInterval;
+		Interval orientedScaledInterval;
+		Tiler.Orientation orientation;
+		int tileWidth;
+		int tileHeight;
+		long minZ;
+		long maxZ;
+		long minR;
+		long maxR;
+		long minC;
+		long maxC;
+		String exportPath;
+		String tilePattern;
+		String format;
+		float quality;
+		int type;
+		boolean ignoreEmptyTiles;
+		int bgValue;
+		TileCATMAID.Interpolation interpolation;
+		int tileCacheSize;
 	}
 	
-	static protected Param parseParameters()
+	static private Param parseParameters()
 	{
 		final Param p = new Param();
 		
@@ -292,7 +292,7 @@ public class TileCATMAID
 			p.interpolation = Interpolation.NL;
 		else
 			p.interpolation = Interpolation.NN;
-		
+		p.tileCacheSize = Integer.valueOf(System.getProperty( "tileCacheSize", "1024" ));
 		return p;
 	}
 
@@ -332,7 +332,8 @@ public class TileCATMAID
 			final double resXY,
 			final double resZ,
 			final RealLocalizable offset,
-			final Interpolation interpolation )
+			final Interpolation interpolation,
+			final int cacheSize )
 	{
 		final CATMAIDRandomAccessibleInterval catmaidStack =
 				new CATMAIDRandomAccessibleInterval(
@@ -342,7 +343,8 @@ public class TileCATMAID
 						depth,
 						s,
 						tileWidth,
-						tileHeight );
+						tileHeight,
+						cacheSize );
 
 		/* scale and re-raster */
 		final double scaleXY = 1.0 / ( 1 << s );
@@ -405,7 +407,8 @@ public class TileCATMAID
 				p.sourceResXY,
 				p.sourceResZ,
 				min,
-				p.interpolation ).tile(
+				p.interpolation,
+				p.tileCacheSize ).tile(
 						croppedDimensions,
 						p.orientation,
 						p.tileWidth,
