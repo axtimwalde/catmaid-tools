@@ -102,20 +102,20 @@ exported in scale level 0 pixels in <em>xyz</em> orientation (long, 0)</dd>
 <dd>width of exported image tiles in pixels (int, 256)</dd>
 <dt>tileHeight</dt>
 <dd>height of exported image tiles in pixels (int, 256)</dd>
-<dt>exportMinZ</dt>
+<dt>exportedMinZ</dt>
 <dd>first <em>z</em>-section index to be exported (long, 0)</dd>
-<dt>exportMaxZ</dt>
+<dt>exportedMaxZ</dt>
 <dd>last <em>z</em>-section index to be exported (long, depth-1)</dd>
-<dt>exportMinR</dt>
-<dd>first row of tiles to be exported (long, 0)</dd>
-<dt>exportMaxR</dt>
-<dd>last row of tiles to be exported (long, depth-1)</dd>
-<dt>exportMinC</dt>
-<dd>first column of tiles to be exported (long, 0)</dd>
-<dt>exportMaxC</dt>
-<dd>last column of tiles to be exported (long, depth-1)</dd>
+<dt>exportedMinX</dt>
+<dd>first X in level 0 pixel coordinates to be exported (long, 0)</dd>
+<dt>exportedMaxX</dt>
+<dd>last X in level 0 pixel coordinates to be exported (long, width-1)</dd>
+<dt>exportedMinY</dt>
+<dd>first Y in level 0 pixel coordinates to be exported (long, 0)</dd>
+<dt>exportedMaxY</dt>
+<dd>last Y in level 0 pixel coordinates to be exported (long, depth-1)</dd>
 <dt>exportBasePath</dt>
-<dd>base path for the stakc to be exported (string, "")</dd>
+<dd>base path for the stack to be exported (string, "")</dd>
 <dt>tilePattern</dt>
 <dd>tilePattern the file name convention for export tile coordinates without
 extension and base path, must contain "&lt;s&gt;","&lt;z&gt;", "&lt;r&gt;",
@@ -155,7 +155,7 @@ contains all parameters in key=value rows (escaped according to Bash's needs).
     depth=100
     orientation=xy
     exportBasePath=/var/www/catmaid/test/xy/
-    tilePattern="<z>/<r>_<c>_<s>"
+    tilePattern="%5$d/%8$d_%9$d_%1$d.jpg"
     format=jpg
     quality=0.85
     type=gray

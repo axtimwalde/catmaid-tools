@@ -107,18 +107,18 @@ import org.catmaid.Tiler.Orientation;
  * <dd>width of exported image tiles in pixels (int, 256)</dd>
  * <dt>tileHeight</dt>
  * <dd>height of exported image tiles in pixels (int, 256)</dd>
- * <dt>exportMinZ</dt>
+ * <dt>exportedMinZ</dt>
  * <dd>first <em>z</em>-section index to be exported (long, 0)</dd>
- * <dt>exportMaxZ</dt>
+ * <dt>exportedMaxZ</dt>
  * <dd>last <em>z</em>-section index to be exported (long, depth-1)</dd>
- * <dt>exportMinR</dt>
- * <dd>first row of tiles to be exported (long, 0)</dd>
- * <dt>exportMaxR</dt>
- * <dd>last row of tiles to be exported (long, depth-1)</dd>
- * <dt>exportMinC</dt>
- * <dd>first column of tiles to be exported (long, 0)</dd>
- * <dt>exportMaxC</dt>
- * <dd>last column of tiles to be exported (long, depth-1)</dd>
+ * <dt>exportedMinX</dt>
+ * <dd>first X in level 0 pixel coordinates to be exported (long, 0)</dd>
+ * <dt>exportedMaxX</dt>
+ * <dd>last X in level 0  pixel coordinates to be exported (long, width-1)</dd>
+ * <dt>exportedMinY</dt>
+ * <dd>first Y in level 0 pixel coordinates to be exported (long, 0)</dd>
+ * <dt>exportedMaxY</dt>
+ * <dd>last Y in level 0 pixel coordinates to be exported (long, height-1)</dd>
  * <dt>exportBasePath</dt>
  * <dd>base path for the stakc to be exported (string, "")</dd>
  * <dt>tilePattern</dt>
@@ -218,16 +218,25 @@ public class TileCATMAID
 		final long exportedMinX = scale(Long.parseLong( System.getProperty( "exportedMinX", "0" ) ), scaleXY);
 		final long exportedMinY = scale(Long.parseLong( System.getProperty( "exportedMinY", "0" ) ), scaleXY);
 		final long exportedMinZ = scale(Long.parseLong( System.getProperty( "exportedMinZ", "0" ) ), scaleZ);
-		final long exportedWidth = scale(Long.parseLong( System.getProperty( "exportedWidth",
+		final long exportedMaxX = scale(Long.parseLong( System.getProperty( "exportedMaxX",
 				Long.toString(p.sourceInterval.dimension(0)) ) ), scaleXY);
-		final long exportedHeight = scale(Long.parseLong( System.getProperty( "exportedHeight",
+		if (exportedMaxX < exportedMinX) {
+			throw new IllegalArgumentException("The end of the X range must be greater than the beginning of the range");
+		}
+		final long exportedMaxY = scale(Long.parseLong( System.getProperty( "exportedMaxY",
 				Long.toString(p.sourceInterval.dimension(1)) ) ), scaleXY);
-		final long exportedDepth = scale(Long.parseLong( System.getProperty( "exportedDepth",
+		if (exportedMaxY < exportedMinY) {
+			throw new IllegalArgumentException("The end of the Y range must be greater than the beginning of the range");
+		}
+		final long exportedMaxZ = scale(Long.parseLong( System.getProperty( "exportedMaxZ",
 				Long.toString(p.sourceInterval.dimension(2)) ) ), scaleZ);
+		if (exportedMaxZ < exportedMinZ) {
+			throw new IllegalArgumentException("The end of the Z range must be greater than the beginning of the range");
+		}
 
 		p.scaledInterval = new FinalInterval(
 			new long[] { exportedMinX, exportedMinY, exportedMinZ },
-			new long[] { exportedMinX + exportedWidth, exportedMinY + exportedHeight, exportedMinZ + exportedDepth}
+			new long[] { exportedMaxX, exportedMaxY, exportedMaxZ}
 		);
 
 		if ( orientation.equalsIgnoreCase( "xz" ) )
