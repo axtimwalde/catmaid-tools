@@ -205,12 +205,12 @@ public class Tiler
 			for ( long r = minR; r <= maxR; ++r )
 			{
 				min[ 1 ] = r * tileHeight + viewInterval.min( 1 );
-				final long max1 = Math.min( min[ 1 ] + viewInterval.dimension( 1 ), min[ 1 ] + tileHeight - 1 );
+				final long max1 = Math.min( viewInterval.max( 1 ), min[ 1 ] + tileHeight - 1 );
 				size[ 1 ] = max1 - min[ 1 ] + 1;
 				for ( long c = minC; c <= maxC; ++c )
 				{
 					min[ 0 ] = c * tileWidth + viewInterval.min( 0 );
-					final long max0 = Math.min( min[ 0 ] + viewInterval.dimension( 0 ), min[ 0 ] + tileWidth - 1 );
+					final long max0 = Math.min( viewInterval.max( 0 ), min[ 0 ] + tileWidth - 1 );
 					size[ 0 ] = max0 - min[ 0 ] + 1;
 
 					final RandomAccessibleInterval< ARGBType > sourceTile = Views.hyperSlice( Views.offsetInterval( view, min, size ), 2, 0 );

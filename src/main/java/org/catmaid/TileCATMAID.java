@@ -107,18 +107,36 @@ import org.catmaid.Tiler.Orientation;
  * <dd>width of exported image tiles in pixels (int, 256)</dd>
  * <dt>tileHeight</dt>
  * <dd>height of exported image tiles in pixels (int, 256)</dd>
- * <dt>exportedMinZ</dt>
+ * <dt>exportMinZ</dt>
  * <dd>first <em>z</em>-section index to be exported (long, 0)</dd>
- * <dt>exportedMaxZ</dt>
+ * <dt>exportMaxZ</dt>
  * <dd>last <em>z</em>-section index to be exported (long, depth-1)</dd>
- * <dt>exportedMinX</dt>
+ * <dt>exportMinX</dt>
  * <dd>first X in level 0 pixel coordinates to be exported (long, 0)</dd>
- * <dt>exportedMaxX</dt>
+ * <dt>exportMaxX</dt>
  * <dd>last X in level 0  pixel coordinates to be exported (long, width-1)</dd>
- * <dt>exportedMinY</dt>
+ * <dt>exportMinY</dt>
  * <dd>first Y in level 0 pixel coordinates to be exported (long, 0)</dd>
- * <dt>exportedMaxY</dt>
+ * <dt>exportMaxY</dt>
  * <dd>last Y in level 0 pixel coordinates to be exported (long, height-1)</dd>
+ * <dt>exportMinR</dt>
+ * <dd>first row to be exported (long, 0). If defined it takes precedence in defining the target interval otherwise 
+ * it is derived from exportMinY.
+ * </dd>
+ * <dt>exportMaxR</dt>
+ * <dd>last row to be exported (long, 0). If defined it takes precedence in defining the target interval otherwise 
+ * it is derived from exportMaxY.
+ * </dd>
+ * <dt>exportMinC</dt>
+ * <dd>first column to be exported (long, 0). If defined it takes precedence in defining the target interval otherwise 
+ * it is derived from exportMinX.
+ * </dd>
+ * <dt>exportMaxC</dt>
+ * <dd>last column to be exported (long, 0). If defined it takes precedence in defining the target interval otherwise 
+ * it is derived from exportMaxX.
+ * </dd>
+ * 
+ * 
  * <dt>exportBasePath</dt>
  * <dd>base path for the stakc to be exported (string, "")</dd>
  * <dt>tilePattern</dt>
@@ -159,8 +177,6 @@ public class TileCATMAID
 		/* export */
 		/* source interval (crop area) in isotropic pixel coordinates */
 		Interval sourceInterval;
-		Interval scaledInterval;
-		Interval orientedScaledInterval;
 		Tiler.Orientation orientation;
 		int tileWidth;
 		int tileHeight;
@@ -215,74 +231,80 @@ public class TileCATMAID
 		final String orientation = System.getProperty( "orientation", "xy" );
 		final double scaleXY = (1 << p.sourceScaleLevel);
 		final double scaleZ = scaleXY * p.sourceResXY / p.sourceResZ;
-		final long exportedMinX = scale(Long.parseLong( System.getProperty( "exportedMinX", "0" ) ), scaleXY);
-		final long exportedMinY = scale(Long.parseLong( System.getProperty( "exportedMinY", "0" ) ), scaleXY);
-		final long exportedMinZ = scale(Long.parseLong( System.getProperty( "exportedMinZ", "0" ) ), scaleZ);
-		final long exportedMaxX = scale(Long.parseLong( System.getProperty( "exportedMaxX",
+		final long exportMinX = scale(Long.parseLong( System.getProperty( "exportMinX", "0" ) ), scaleXY);
+		final long exportMinY = scale(Long.parseLong( System.getProperty( "exportMinY", "0" ) ), scaleXY);
+		final long exportMinZ = scale(Long.parseLong( System.getProperty( "exportMinZ", "0" ) ), scaleZ);
+		final long exportMaxX = scale(Long.parseLong( System.getProperty( "exportMaxX",
 				Long.toString(p.sourceInterval.dimension(0)) ) ), scaleXY);
-		if (exportedMaxX < exportedMinX) {
+
+		if (exportMaxX < exportMinX) {
 			throw new IllegalArgumentException("The end of the X range must be greater than the beginning of the range");
 		}
-		final long exportedMaxY = scale(Long.parseLong( System.getProperty( "exportedMaxY",
+		final long exportMaxY = scale(Long.parseLong( System.getProperty( "exportMaxY",
 				Long.toString(p.sourceInterval.dimension(1)) ) ), scaleXY);
-		if (exportedMaxY < exportedMinY) {
+		if (exportMaxY < exportMinY) {
 			throw new IllegalArgumentException("The end of the Y range must be greater than the beginning of the range");
 		}
-		final long exportedMaxZ = scale(Long.parseLong( System.getProperty( "exportedMaxZ",
+		final long exportMaxZ = scale(Long.parseLong( System.getProperty( "exportMaxZ",
 				Long.toString(p.sourceInterval.dimension(2)) ) ), scaleZ);
-		if (exportedMaxZ < exportedMinZ) {
+		if (exportMaxZ < exportMinZ) {
 			throw new IllegalArgumentException("The end of the Z range must be greater than the beginning of the range");
 		}
 
-		p.scaledInterval = new FinalInterval(
-			new long[] { exportedMinX, exportedMinY, exportedMinZ },
-			new long[] { exportedMaxX, exportedMaxY, exportedMaxZ}
+		final Interval scaledExportInterval = new FinalInterval(
+			new long[] { exportMinX, exportMinY, exportMinZ },
+			new long[] { exportMaxX, exportMaxY, exportMaxZ}
 		);
 
+		final Interval orientedScaledInterval;
 		if ( orientation.equalsIgnoreCase( "xz" ) )
 		{
 			p.orientation = Orientation.XZ;
-			p.orientedScaledInterval = new FinalInterval(
+			orientedScaledInterval = new FinalInterval(
 					new long[] {
-							p.scaledInterval.min(0),
-							p.scaledInterval.min(2),
-							p.scaledInterval.min(1)
+							scaledExportInterval.min(0),
+							scaledExportInterval.min(2),
+							scaledExportInterval.min(1)
 					},
-					new long[]{
-							p.scaledInterval.max(0),
-							p.scaledInterval.max(2),
-							p.scaledInterval.max(1)
+					new long[] {
+							scaledExportInterval.max(0),
+							scaledExportInterval.max(2),
+							scaledExportInterval.max(1)
 					}
 			);
 		}
 		else if ( orientation.equalsIgnoreCase( "zy" ) )
 		{
 			p.orientation = Orientation.ZY;
-			p.orientedScaledInterval = new FinalInterval(
+			orientedScaledInterval = new FinalInterval(
 					new long[] {
-							p.scaledInterval.min(2),
-							p.scaledInterval.min(1),
-							p.scaledInterval.min(0)
+							scaledExportInterval.min(2),
+							scaledExportInterval.min(1),
+							scaledExportInterval.min(0)
 					},
 					new long[]{
-							p.scaledInterval.max(2),
-							p.scaledInterval.max(1),
-							p.scaledInterval.max(0)
+							scaledExportInterval.max(2),
+							scaledExportInterval.max(1),
+							scaledExportInterval.max(0)
 					}
 			);
 		}
 		else
 		{
 			p.orientation = Orientation.XY;
-			p.orientedScaledInterval = new FinalInterval(p.scaledInterval);
+			orientedScaledInterval = new FinalInterval(scaledExportInterval);
 		}
 
-		p.minZ = p.orientedScaledInterval.min( 2 );
-		p.maxZ = p.orientedScaledInterval.max( 2 );
-		p.minR = ( long )(p.orientedScaledInterval.min( 1 ) / ( double )p.tileHeight );
-		p.maxR = ( long )Math.ceil(p.orientedScaledInterval.max( 1 ) / ( double )p.tileHeight - 1);
-		p.minC = ( long )(p.orientedScaledInterval.min( 0 ) / ( double )p.tileWidth );
-		p.maxC = ( long )Math.ceil(p.orientedScaledInterval.max( 0 ) / ( double )p.tileWidth - 1);
+		p.minZ = orientedScaledInterval.min( 2 );
+		p.minR = Long.parseLong( System.getProperty( "exportMinR", 
+				Long.toString(( long )(orientedScaledInterval.min( 1 ) / ( double )p.tileHeight )) ) );
+		p.minC = Long.parseLong( System.getProperty( "exportMinC", 
+				Long.toString(( long )(orientedScaledInterval.min( 0 ) / ( double )p.tileWidth )) ) );
+		p.maxZ = orientedScaledInterval.max( 2 );
+		p.maxR = Long.parseLong( System.getProperty( "exportMaxR",
+				Long.toString(( long )Math.ceil(orientedScaledInterval.max( 1 ) / ( double )p.tileHeight - 1) ) ) );
+		p.maxC = Long.parseLong( System.getProperty( "exportMaxC",
+				Long.toString(( long )Math.ceil(orientedScaledInterval.max( 0 ) / ( double )p.tileWidth - 1) ) ) );
 
 		p.exportPath = System.getProperty( "exportBasePath", "" );
 		p.format = System.getProperty( "format", "jpg" );
