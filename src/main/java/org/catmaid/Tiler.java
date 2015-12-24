@@ -268,7 +268,7 @@ public class Tiler
 		final long maxC;
 		final long maxR;
 		final long maxZ;
-		
+
 		switch ( orientation )
 		{
 		case XZ:

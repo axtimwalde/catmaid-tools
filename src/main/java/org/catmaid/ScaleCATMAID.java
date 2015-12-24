@@ -16,6 +16,7 @@
  */
 package org.catmaid;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -68,21 +69,22 @@ import javax.imageio.ImageIO;
  */
 public class ScaleCATMAID
 {
-	static protected class Param
+	static class Param
 	{
-		public int tileWidth;
-		public int tileHeight;
-		public long minX;
-		public long width;
-		public long minY;
-		public long height;
-		public long minZ;
-		public long maxZ;
-		public String tileFormat;
-		public String format;
-		public float quality;
-		public int type;
-		public boolean ignoreEmptyTiles;
+		int tileWidth;
+		int tileHeight;
+		long minX;
+		long width;
+		long minY;
+		long height;
+		long minZ;
+		long maxZ;
+		String tileFormat;
+		String format;
+		float quality;
+		int type;
+		boolean ignoreEmptyTiles;
+		int bgValue;
 	}
 
 	private ScaleCATMAID() {}
@@ -123,6 +125,7 @@ public class ScaleCATMAID
 				throw new IllegalArgumentException("Max Y value overflow");
 			}
 		}
+		p.bgValue = Integer.valueOf(System.getProperty( "bgValue", "0"));
 
 		return p;
 	}
@@ -178,9 +181,15 @@ public class ScaleCATMAID
 			final String format,
 			final float quality,
 			final int type,
-			final boolean ignoreEmptyTiles) throws Exception
+			final boolean ignoreEmptyTiles,
+			final int bgValue) throws Exception
 	{
 		final BufferedImage alternative = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
+		Graphics2D alternativeG = alternative.createGraphics();
+
+		Color bgColor = new Color ( bgValue, bgValue, bgValue );
+		alternativeG.setPaint( bgColor );
+		alternativeG.fillRect ( 0, 0, alternative.getWidth(), alternative.getHeight() );
 
 		final int[] targetPixels = new int[ tileWidth * tileHeight ];
 		final BufferedImage target = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
@@ -272,7 +281,7 @@ Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 						final PixelGrabber pg = new PixelGrabber( sourceImage, 0, 0, tileWidth * 2, tileHeight * 2, sourcePixels, 0, tileWidth * 2 );
 						pg.grabPixels();
 
-						boolean notEmpty = Downsampler.downsampleRGB( sourcePixels, targetPixels, tileWidth * 2, tileHeight * 2 );
+						boolean notEmpty = Downsampler.downsampleRGB( sourcePixels, targetPixels, tileWidth * 2, tileHeight * 2, bgColor.getRGB() );
 
 						if (notEmpty || !ignoreEmptyTiles) {
 							target.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, targetPixels );
@@ -308,7 +317,8 @@ Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 			p.format,
 			p.quality,
 			p.type,
-			p.ignoreEmptyTiles);
+			p.ignoreEmptyTiles,
+			p.bgValue);
 	}
 
 	private static final long adjustStart(long index, int tileSize) {

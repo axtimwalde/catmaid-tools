@@ -99,7 +99,7 @@ final public class Downsampler
 		}
 	}
 
-	final static public boolean downsampleRGB( final int[] aPixels, final int[] bPixels, final int wa, final int ha )
+	final static public boolean downsampleRGB( final int[] aPixels, final int[] bPixels, final int wa, final int ha, int bgValue )
 	{
 		assert aPixels.length == wa * ha && bPixels.length == wa / 2 * ( ha / 2 ) : "Input dimensions do not match.";
 		
@@ -117,7 +117,7 @@ final public class Downsampler
 				final int xa1 = xa + 1;
 				int c = averageColor( ya + xa, ya + xa1, ya1 + xa, ya1 + xa1, aPixels );
 				bPixels[ yb + xb ] = c;
-				if ((c & 0xFFFFFF) != 0) {
+				if ((c & 0xFFFFFF) != bgValue) {
 					bresult = true; // return true since at least one pixel is non black
 				}
 			}
