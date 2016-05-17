@@ -18,9 +18,11 @@ package org.catmaid;
 
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -108,8 +110,16 @@ public class Util
 			writeTile(img, os, format, quality);
 			int statusCode = conn.getResponseCode();
 			if (statusCode >= HttpURLConnection.HTTP_BAD_REQUEST) {
-				System.out.printf("Error response from %s: %d\n", httpUrl, statusCode);
+				System.err.printf("Error response from %s: %d\n", httpUrl, statusCode);
 			}
+			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+			String serverOutput;
+			while ((serverOutput = br.readLine()) != null) {
+				System.out.println(serverOutput);
+			}
+		} catch (IOException e) {
+			System.err.printf("Error writing to %s %d\n", httpUrl, conn.getExpiration());
+			throw e;
 		} finally {
 			conn.disconnect();
 		}
@@ -136,6 +146,7 @@ public class Util
 			writer.write( img );
 		}
 		ios.flush();
+		outputStream.flush();
 		writer.dispose();
 	}
 
