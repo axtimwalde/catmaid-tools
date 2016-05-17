@@ -19,13 +19,18 @@ package org.catmaid;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
+import javax.imageio.stream.ImageOutputStream;
 
 /**
  * 
@@ -57,17 +62,69 @@ public class Util
 		imgCopy.createGraphics().drawImage( img, 0, 0, null );
 		return imgCopy;
 	}
-	
+
 	final static public void writeTile(
 			final BufferedImage img,
-			final String path,
+			final String url,
 			final String format,
 			final float quality ) throws IOException
 	{
-		new File( path ).getParentFile().mkdirs();
+		if ( url.startsWith("file://") ) {
+			writeTileToFile(img, url.substring("file://".length()), format, quality);
+		} else if ( url.startsWith("http://") || url.startsWith("https://") ) {
+			writeTileToUrl(img, url, format, quality);
+		} else {
+			writeTileToFile(img, url, format, quality);
+		}
+	}
+
+	final static private void writeTileToFile(
+			final BufferedImage img,
+			final String tileFile,
+			final String format,
+			final float quality ) throws IOException
+	{
+		new File( tileFile ).getParentFile().mkdirs();
+		final FileOutputStream os = new FileOutputStream( new File( tileFile ) );
+		try {
+			writeTile(img, os, format, quality);
+		} finally {
+			os.close();
+		}
+	}
+
+	final static private void writeTileToUrl(
+			final BufferedImage img,
+			final String httpUrl,
+			final String format,
+			final float quality ) throws IOException
+	{
+		URL url = new URL(httpUrl);
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setDoOutput(true);
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("Content-Type", "application/octet-stream");
+		OutputStream os = conn.getOutputStream();
+		try {
+			writeTile(img, os, format, quality);
+			int statusCode = conn.getResponseCode();
+			if (statusCode >= HttpURLConnection.HTTP_BAD_REQUEST) {
+				System.out.printf("Error response from %s: %d\n", httpUrl, statusCode);
+			}
+		} finally {
+			conn.disconnect();
+		}
+	}
+
+	final static private void writeTile(
+			final BufferedImage img,
+			final OutputStream outputStream,
+			final String format,
+			final float quality ) throws IOException
+	{
 		final ImageWriter writer = ImageIO.getImageWritersByFormatName( format ).next();
-		final FileImageOutputStream output = new FileImageOutputStream( new File( path ) );
-		writer.setOutput( output );
+		ImageOutputStream ios = ImageIO.createImageOutputStream(outputStream);
+		writer.setOutput(ios);
 		if ( format.equalsIgnoreCase( "jpg" ) )
 		{
 			final ImageWriteParam param = writer.getDefaultWriteParam();
@@ -76,9 +133,11 @@ public class Util
 			writer.write( null, new IIOImage( img.getRaster(), null, null ), param );
 		}
 		else
+		{
 			writer.write( img );
-		
+		}
+		ios.flush();
 		writer.dispose();
-		output.close();
 	}
+
 }
