@@ -23,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 
 import javax.imageio.ImageIO;
 
@@ -131,24 +132,31 @@ public class ScaleCATMAID
 	}
 
 	final static protected BufferedImage open(
-			final String path,
+			final String urlString,
 			final BufferedImage alternative,
 			final int type )
 	{
-		final File file = new File( path );
-		if ( file.exists() )
+		File f = new File( urlString );
+		if ( f.exists() )
 		{
 			try
 			{
-				return ImageIO.read( new File( path ) );
+				return ImageIO.read( new File( urlString ) );
 			}
-			catch ( final IOException e )
+			catch ( IOException e )
 			{
-				return alternative;
+			}
+		} else
+		{
+			try {
+				final URL url = new URL( urlString );
+				return ImageIO.read( url );
+			}
+			catch ( IOException e )
+			{
 			}
 		}
-		else
-			return alternative;
+		return alternative;
 	}
 
 	/**
@@ -286,7 +294,6 @@ Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 						if (notEmpty || !ignoreEmptyTiles) {
 							target.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, targetPixels );
 							final BufferedImage targetCopy = Util.draw( target, type );
-	
 							Util.writeTile(
 									targetCopy,
 									String.format( tileFormat, s, scale, x * iScale, y * iScale, z, tileWidth * iScale, tileHeight * iScale, yt, xt ),
