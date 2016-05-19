@@ -23,6 +23,8 @@ import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 
 import javax.imageio.ImageIO;
@@ -145,15 +147,25 @@ public class ScaleCATMAID
 			}
 			catch ( IOException e )
 			{
+				e.printStackTrace();
 			}
 		} else
 		{
 			try {
 				final URL url = new URL( urlString );
-				return ImageIO.read( url );
+				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+				conn.setDoOutput(false);
+				conn.setDoInput(true);
+				conn.setRequestMethod("GET");
+				int statusCode = conn.getResponseCode();
+				if (statusCode != HttpURLConnection.HTTP_OK) {
+					return alternative;
+				}
+				return ImageIO.read(conn.getInputStream());
 			}
 			catch ( IOException e )
 			{
+				e.printStackTrace();
 			}
 		}
 		return alternative;
