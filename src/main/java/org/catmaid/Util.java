@@ -38,9 +38,8 @@ import javax.imageio.stream.ImageOutputStream;
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-public class Util
-{
-	final static public String tilePath(
+class Util {
+	final static String tilePath(
 			final String tileFormat,
 			final int scaleLevel,
 			final double scale,
@@ -50,21 +49,66 @@ public class Util
 			final int tileWidth,
 			final int tileHeight,
 			final long row,
-			final long column )
-	{
+			final long column) {
 		return String.format( tileFormat, scaleLevel, scale, x, y, z, tileWidth, tileHeight, row, column );
 	}
-	
-	final static public BufferedImage draw(
+
+	final static BufferedImage draw(
 			final Image img,
-			final int type )
-	{
+			final int type) {
 		final BufferedImage imgCopy = new BufferedImage( img.getWidth( null ), img.getHeight( null ), type );
 		imgCopy.createGraphics().drawImage( img, 0, 0, null );
 		return imgCopy;
 	}
 
-	final static public void writeTile(
+	final static BufferedImage readTile(
+			final String url,
+			final BufferedImage alternative) {
+		if ( url.startsWith("file://") ) {
+			return readTileFromFile(url.substring("file://".length()), alternative);
+		} else if ( url.startsWith("http://") || url.startsWith("https://") ) {
+			return readTileFromUrl(url, alternative);
+		} else {
+			return readTileFromFile(url, alternative);
+		}
+	}
+
+	final static BufferedImage readTileFromFile(
+			final String url,
+			final BufferedImage alternative) {
+		File f = new File( url );
+		if ( f.exists() ) {
+			try {
+				return ImageIO.read( new File( url ) );
+			} catch ( IOException e ) {
+				e.printStackTrace();
+			}
+		}
+		return alternative;
+	}
+
+	final static BufferedImage readTileFromUrl(
+			final String urlString,
+			final BufferedImage alternative) {
+		try {
+			final URL url = new URL( urlString );
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setDoOutput(false);
+			conn.setDoInput(true);
+			conn.setRequestMethod("GET");
+			int statusCode = conn.getResponseCode();
+			if (statusCode != HttpURLConnection.HTTP_OK) {
+				return alternative;
+			}
+			return ImageIO.read(conn.getInputStream());
+		} catch ( IOException e )
+		{
+			e.printStackTrace();
+		}
+		return alternative;
+	}
+
+	final static void writeTile(
 			final BufferedImage img,
 			final String url,
 			final String format,

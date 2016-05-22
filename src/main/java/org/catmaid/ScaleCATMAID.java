@@ -21,13 +21,6 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import javax.imageio.ImageIO;
 
 /**
  * <p>A standalone command line application to generate the scale pyramid of an
@@ -133,44 +126,6 @@ public class ScaleCATMAID
 		return p;
 	}
 
-	final static protected BufferedImage open(
-			final String urlString,
-			final BufferedImage alternative,
-			final int type )
-	{
-		File f = new File( urlString );
-		if ( f.exists() )
-		{
-			try
-			{
-				return ImageIO.read( new File( urlString ) );
-			}
-			catch ( IOException e )
-			{
-				e.printStackTrace();
-			}
-		} else
-		{
-			try {
-				final URL url = new URL( urlString );
-				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-				conn.setDoOutput(false);
-				conn.setDoInput(true);
-				conn.setRequestMethod("GET");
-				int statusCode = conn.getResponseCode();
-				if (statusCode != HttpURLConnection.HTTP_OK) {
-					return alternative;
-				}
-				return ImageIO.read(conn.getInputStream());
-			}
-			catch ( IOException e )
-			{
-				e.printStackTrace();
-			}
-		}
-		return alternative;
-	}
-
 	/**
 	 * Generate scaled tiles from a range of an existing scale level 0 tile
 	 * stack.
@@ -251,10 +206,9 @@ Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 						}
 						nResultTiles++;
 						final long xt = x / (2 * tileWidth);
-						final Image imp1 = open(
+						final Image imp1 = Util.readTile(
 								String.format( tileFormat, s1, scale1, x * iScale1, y * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt, 2 * xt ),
-								alternative,
-								type );
+								alternative);
 
 						if (maxX < 0) {
 							if (imp1 == alternative) {
@@ -267,27 +221,24 @@ Y:				for ( long y = minY / iScale1; proceedY; y += 2 * tileHeight )
 									continue Y;
 							}
 						}
-						final Image imp2 = open(
+						final Image imp2 = Util.readTile(
 								String.format( tileFormat, s1, scale1, ( x + tileWidth ) * iScale1, y * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt, 2 * xt + 1 ),
-								alternative,
-								type );
+								alternative);
 
 						proceedX = maxX >= 0 || imp2 != alternative;
 
-						final Image imp3 = open(
+						final Image imp3 = Util.readTile(
 								String.format( tileFormat, s1, scale1, x * iScale1, ( y + tileHeight ) * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt + 1, 2 * xt ),
-								alternative,
-								type );
+								alternative);
 
 						proceedY = maxY >= 0 || imp3 != alternative;
 
 						if (!proceedX && !proceedY && x == minX / iScale1 && y == minY / iScale1) {
 							break S;
 						}
-						final Image imp4 = open(
+						final Image imp4 = Util.readTile(
 								String.format( tileFormat, s1, scale1, ( x + tileWidth ) * iScale1, ( y + tileHeight ) * iScale1, z, tileWidth * iScale1, tileHeight * iScale1, 2 * yt + 1, 2 * xt + 1 ),
-								alternative,
-								type );
+								alternative);
 
 						if (imp1 == alternative && imp2 == alternative && imp3 == alternative && imp4 == alternative) {
 							continue;
