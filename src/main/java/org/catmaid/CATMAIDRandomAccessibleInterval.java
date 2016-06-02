@@ -682,7 +682,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			final int[] pixels = new int[ tileWidth * tileHeight ];
 			try
 			{
-				System.out.println( "Load r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+				System.out.println( "Load s=" + scale + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
 				final URL url = new URL( urlString );
 				final BufferedImage jpg = ImageIO.read( url );
 
@@ -697,11 +697,11 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 				pg.grabPixels();
 
 				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
-				System.out.println( "Successfully loaded  r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+				System.out.println( "Successfully loaded  s=" + scale + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
 			}
 			catch (final IOException e)
 			{
-				System.out.println( "Failed loading  r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+				System.out.println( "Failed loading  s=" + scale + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
 				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
 			}
 			catch (final InterruptedException e)
