@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -90,9 +91,11 @@ class Util {
 	final static BufferedImage readTileFromUrl(
 			final String urlString,
 			final BufferedImage alternative) {
+		HttpURLConnection conn = null;
+		InputStream connInputStream = null;
 		try {
 			final URL url = new URL( urlString );
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn = (HttpURLConnection) url.openConnection();
 			conn.setDoOutput(false);
 			conn.setDoInput(true);
 			conn.setRequestMethod("GET");
@@ -100,10 +103,21 @@ class Util {
 			if (statusCode != HttpURLConnection.HTTP_OK) {
 				return alternative;
 			}
-			return ImageIO.read(conn.getInputStream());
-		} catch ( IOException e )
-		{
+			connInputStream = conn.getInputStream();
+			return ImageIO.read(connInputStream);
+		} catch ( IOException e ) {
 			e.printStackTrace();
+		} finally {
+			if (connInputStream != null) {
+				try {
+					connInputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (conn != null) {
+				conn.disconnect();
+			}
 		}
 		return alternative;
 	}
@@ -150,13 +164,15 @@ class Util {
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("Content-Type", "application/octet-stream");
 		OutputStream os = conn.getOutputStream();
+		InputStream is = null;
 		try {
 			writeTile(img, os, format, quality);
 			int statusCode = conn.getResponseCode();
 			if (statusCode >= HttpURLConnection.HTTP_BAD_REQUEST) {
 				System.err.printf("Error response from %s: %d\n", httpUrl, statusCode);
 			}
-			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+			is = conn.getInputStream();
+			BufferedReader br = new BufferedReader(new InputStreamReader((is)));
 			String serverOutput;
 			while ((serverOutput = br.readLine()) != null) {
 				System.out.println(serverOutput);
@@ -165,6 +181,13 @@ class Util {
 			System.err.printf("Error writing to %s %d\n", httpUrl, conn.getExpiration());
 			throw e;
 		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
 			conn.disconnect();
 		}
 	}
