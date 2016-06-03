@@ -257,7 +257,7 @@ public class TileCATMAID
 		);
 
 		final Interval orientedScaledInterval;
-		if ( orientation.equalsIgnoreCase( "xz" ) )
+		if ( orientation.equalsIgnoreCase( "xz" ) || orientation.equalsIgnoreCase( "zx" ) )
 		{
 			p.orientation = Orientation.XZ;
 			orientedScaledInterval = new FinalInterval(
@@ -273,7 +273,7 @@ public class TileCATMAID
 					}
 			);
 		}
-		else if ( orientation.equalsIgnoreCase( "zy" ) )
+		else if ( orientation.equalsIgnoreCase( "zy" ) || orientation.equalsIgnoreCase( "yz" ) )
 		{
 			p.orientation = Orientation.ZY;
 			orientedScaledInterval = new FinalInterval(
