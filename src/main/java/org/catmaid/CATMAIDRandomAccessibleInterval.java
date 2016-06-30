@@ -39,11 +39,7 @@ package org.catmaid;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
-import java.io.IOException;
-import java.lang.ref.SoftReference;
 import java.net.URL;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
