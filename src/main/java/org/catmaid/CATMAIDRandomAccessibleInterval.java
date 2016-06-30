@@ -611,11 +611,10 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		max[ 2 ] = depth - 1;
 		tileCache = CacheBuilder.newBuilder()
 						.maximumSize(cacheSize > 0 ? cacheSize : MAX_CACHE_SIZE)
-						.weakKeys()
 						.weakValues()
 						.build();
 	}
-	
+
 	@Override
 	public int numDimensions()
 	{
@@ -642,6 +641,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		}
 		catch ( final OutOfMemoryError e )
 		{
+			System.err.println("Out of memory error while fetching tile (" + c + "," + r + "," + z + "). Trying to recover");
 			System.gc();
 			return fetchPixels2( r, c, z );
 		}
