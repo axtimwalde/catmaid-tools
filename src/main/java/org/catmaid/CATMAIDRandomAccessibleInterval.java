@@ -44,8 +44,13 @@ import java.lang.ref.SoftReference;
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 
 import javax.imageio.ImageIO;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import net.imglib2.AbstractInterval;
 import net.imglib2.AbstractLocalizable;
@@ -123,28 +128,17 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			return ( int )( value ^ ( value >>> 32 ) );
 		}
 	}
-	
+
 	class Entry
 	{
-		final protected Key key;
-		final protected int[] data;
+		final int[] data;
 		
-		public Entry( final Key key, final int[] data )
+		public Entry( final int[] data )
 		{
-			this.key = key;
 			this.data = data;
 		}
-		
-		@Override
-		public void finalize()
-		{
-			synchronized ( cache )
-			{
-				cache.remove( key );
-			}
-		}
 	}
-	
+
 	public class CATMAIDRandomAccess extends AbstractLocalizable implements RandomAccess< ARGBType >
 	{
 		protected long r, c;
@@ -592,7 +586,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 
 	private static final int MAX_CACHE_SIZE = 2048;
 
-	final private Map< Key, SoftReference< Entry > > cache;
+	final private Cache< Key, Entry > tileCache;
 	final private String urlFormat;
 	final private long rows, cols, s;
 	final private int tileWidth, tileHeight;
@@ -619,18 +613,11 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		max[ 0 ] = ( long )( width * scale ) - 1;
 		max[ 1 ] = ( long )( height * scale ) - 1;
 		max[ 2 ] = depth - 1;
-		cache =
-			new LinkedHashMap<Key, SoftReference< Entry >> (
-					(cacheSize > 0 ? cacheSize : MAX_CACHE_SIZE) * 10/7,
-					0.7f,
-					true) {
-				private static final long serialVersionUID = 1L;
-
-				@Override
-				protected boolean removeEldestEntry(Map.Entry<Key, SoftReference<Entry>> eldest) {
-					return size() > MAX_CACHE_SIZE;
-				}
-			};
+		tileCache = CacheBuilder.newBuilder()
+						.maximumSize(cacheSize > 0 ? cacheSize : MAX_CACHE_SIZE)
+						.weakKeys()
+						.weakValues()
+						.build();
 	}
 	
 	@Override
@@ -666,49 +653,38 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		
 	protected int[] fetchPixels2( final long r, final long c, final long z )
 	{
+		Entry tileEntry = null;
 		final Key key = new Key( r, c, z );
-		synchronized ( cache )
-		{
-			final SoftReference< Entry > cachedReference = cache.get( key );
-			if ( cachedReference != null )
-			{
-				final Entry cachedEntry = cachedReference.get();
-				if ( cachedEntry != null )
-					return cachedEntry.data;
-			}
+		try {
+			tileEntry = tileCache.get(key, new Callable<Entry>() {
+				@Override
+				public Entry call() {
+					final String urlString = String.format( urlFormat, s, scale, c * tileWidth, r * tileHeight, z, tileWidth, tileHeight, r, c );
+					final int[] pixels = new int[ tileWidth * tileHeight ];
+					try {
+						System.out.println( "Load s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+						final URL url = new URL( urlString );
+						final BufferedImage jpg = ImageIO.read( url );
 
-			final String urlString = String.format( urlFormat, s, scale, c * tileWidth, r * tileHeight, z, tileWidth, tileHeight, r, c );
-
-			final int[] pixels = new int[ tileWidth * tileHeight ];
-			try
-			{
-				System.out.println( "Load s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
-				final URL url = new URL( urlString );
-				final BufferedImage jpg = ImageIO.read( url );
-
-				/* This gymnastic is necessary to get reproducible gray
-				 * values, just opening a JPG or PNG, even when saved by
-				 * ImageIO, and grabbing its pixels results in gray values
-				 * with a non-matching gamma transfer function, I cannot tell
-				 * why... */
-				final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
-				image.createGraphics().drawImage( jpg, 0, 0, null );
-				final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
-				pg.grabPixels();
-
-				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
-				System.out.println( "Successfully loaded  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
-			}
-			catch (final IOException e)
-			{
-				System.out.println( "Failed loading  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
-				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
-			}
-			catch (final InterruptedException e)
-			{
-				e.printStackTrace();
-			}
-			return pixels;
+						/* This gymnastic is necessary to get reproducible gray
+						 * values, just opening a JPG or PNG, even when saved by
+						 * ImageIO, and grabbing its pixels results in gray values
+						 * with a non-matching gamma transfer function, I cannot tell
+						 * why... */
+						final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
+						image.createGraphics().drawImage( jpg, 0, 0, null );
+						final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
+						pg.grabPixels();
+						System.out.println( "Successfully loaded  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+					} catch (final Exception e) {
+						System.out.println( "Failed loading  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+					}
+					return new Entry(pixels);
+				}
+			});
+		} catch (ExecutionException ee) {
+			ee.printStackTrace();
 		}
+		return tileEntry != null ? tileEntry.data : null;
 	}
 }

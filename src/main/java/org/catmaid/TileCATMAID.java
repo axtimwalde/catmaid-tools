@@ -36,7 +36,6 @@ import net.imglib2.view.Views;
 import org.catmaid.Tiler.Orientation;
 
 
-
 /**
  * <p>A standalone command line application to export image tiles representing
  * scale level 0 of the tiled scale pyramids for the CATMAID interface from
