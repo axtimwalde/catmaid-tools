@@ -26,7 +26,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.array.IntArray;
-import net.imglib2.type.Type;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
@@ -38,7 +37,6 @@ import net.imglib2.view.Views;
  */
 public class Tiler
 {
-//	final static protected Toolkit toolkit = Toolkit.getDefaultToolkit();
 	final protected RandomAccessibleInterval< ARGBType > source;
 	
 	
@@ -62,15 +60,23 @@ public class Tiler
 	 * @param sourceTile
 	 * @param targetTile
 	 */
-	final static protected < T extends Type< T > > void copyTile(
-			final RandomAccessibleInterval< T > sourceTile,
-			final RandomAccessibleInterval< T > targetTile )
+	final static private boolean copyTile(
+			final RandomAccessibleInterval< ARGBType > sourceTile,
+			final RandomAccessibleInterval< ARGBType > targetTile,
+			final ARGBType bg )
 	{
-		final Cursor< T > src = Views.flatIterable( sourceTile ).cursor();
-		final Cursor< T > dst = Views.flatIterable( targetTile ).cursor();
+		final Cursor< ARGBType > src = Views.flatIterable( sourceTile ).cursor();
+		final Cursor< ARGBType > dst = Views.flatIterable( targetTile ).cursor();
 
-		while ( src.hasNext() )
-			dst.next().set( src.next() );
+		boolean hasInfo = false;
+		while ( src.hasNext() ) {
+			ARGBType spixel = src.next();
+			if ((spixel.get() & 0xFFFFFF) != bg.get()) {
+				hasInfo = true;
+			}
+			dst.next().set(spixel);
+		}
+		return hasInfo;
 	}
 	
 
@@ -86,7 +92,7 @@ public class Tiler
 	 * @param yx
 	 * @param bg background value
 	 */
-	final static protected void copyTile(
+	final static private boolean copyTile(
 			final RandomAccessibleInterval< ARGBType > sourceTile,
 			final RandomAccessibleInterval< ARGBType > targetTile,
 			final boolean yx,
@@ -103,7 +109,7 @@ public class Tiler
 			for ( final ARGBType p : Views.iterable( targetTile ) )
 				p.set( bg );
 			
-			raiTarget = Views.interval( targetTile, sourceTile );			
+			raiTarget = Views.interval( targetTile, sourceTile );
 		}
 		
 		final RandomAccessibleInterval< ARGBType > raiSource;
@@ -115,35 +121,9 @@ public class Tiler
 		else
 			raiSource = sourceTile;
 		
-		copyTile( raiSource, raiTarget );
+		return copyTile( raiSource, raiTarget, bg );
 	}
-	
-	
-	/**
-	 * Replace the ctile coordinates in a pattern string.
-	 * 
-	 * @param template
-	 * @param s scale-index (scale = 1/2<sup>s</sup>)
-	 * @param z z-index
-	 * @param r row
-	 * @param c column
-	 * @return
-	 */
-	final static protected String tileName(
-			final String template,
-			final long s,
-			final long z,
-			final long r,
-			final long c )
-	{
-		return template.
-				replace( "<s>", Long.toString( s ) ).
-				replace( "<z>", Long.toString( z ) ).
-				replace( "<r>", Long.toString( r ) ).
-				replace( "<c>", Long.toString( c ) );
-	}
-	
-	
+
 	/**
 	 * Generate a subset of a CATMAID tile stack of an {@link Interval} of the
 	 * source {@link RandomAccessibleInterval}.  That is you can choose the
@@ -166,6 +146,7 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
 	 * @throws IOException
 	 */
 	public void tile(
@@ -183,7 +164,9 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		/* orientation */
 		final RandomAccessibleInterval< ARGBType > view;
@@ -206,19 +189,16 @@ public class Tiler
 			view = source;
 			viewInterval = sourceInterval;
 		}
-		
-//		final long maxC = 
-//		final long maxR = ( long ) Math.ceil( ( double ) viewInterval.dimension( 1 ) / ( double ) tileHeight ) - 1;
-//		final long maxZ = viewInterval.dimension( 2 ) - 1;
-//		
+
 		final long[] min = new long[ 3 ];
 		final long[] size = new long[ 3 ];
 		size[ 2 ] = 1;
-		
+
 		final int[] tilePixels = new int[ tileWidth * tileHeight ];
 		final ArrayImg< ARGBType, IntArray > tile = ArrayImgs.argbs( tilePixels, tileWidth, tileHeight );
 		final BufferedImage img = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
-		
+		final ARGBType bg = new ARGBType( ARGBType.rgba(bgValue, bgValue, bgValue, 0) );
+
 		for ( long z = minZ; z <= maxZ; ++z )
 		{
 			min[ 2 ] = z + viewInterval.min( 2 );
@@ -235,20 +215,18 @@ public class Tiler
 
 					final RandomAccessibleInterval< ARGBType > sourceTile = Views.hyperSlice( Views.offsetInterval( view, min, size ), 2, 0 );
 
-					copyTile( sourceTile, tile, orientation == Orientation.ZY, new ARGBType( 0 ) );
-					img.getRaster().setDataElements( 0, 0, tileWidth, tileHeight, tilePixels );
-					final BufferedImage imgCopy = Util.draw( img, type );
-					
-					final String tilePath =
-							new StringBuffer( exportPath ).
-							append( "/" ).
-							append( tileName( tilePattern, 0, z, r, c ) ).
-							append( "." ).
-							append( format ).
-							toString();
-					
-					Util.writeTile( imgCopy, tilePath, format, quality );
-//					writePngTile( img, sectionPath + "/" + r + "_" + c + "_0.png" );
+					boolean tileIsNotEmpty = copyTile( sourceTile, tile, orientation == Orientation.ZY, bg );
+					if (tileIsNotEmpty || !ignoreEmptyTiles) {
+						img.getRaster().setDataElements(0, 0, tileWidth, tileHeight, tilePixels);
+						final BufferedImage imgCopy = Util.draw(img, type);
+						final String tilePath =
+								new StringBuffer(exportPath != null && exportPath.trim().length() > 0 ? exportPath : "")
+										.append(exportPath != null && exportPath.trim().length() > 0 ? "/" : "")
+										.append(String.format(tilePattern, 0, 1.0, min[0], min[1], z, tileWidth, tileHeight, r, c))
+										.toString();
+
+						Util.writeTile(imgCopy, tilePath, format, quality);
+					}
 				}
 			}
 		}
@@ -260,7 +238,7 @@ public class Tiler
 	 * {@link RandomAccessibleInterval}.  That is you can choose the
 	 * window to be exported.
 	 * 
-	 * @param sourceInterval the interval of the source to be exported 
+	 * @param sourceInterval the interval of the source to be exported
 	 * @param orientation the export orientation
 	 * @param tileWidth
 	 * @param tileHeight
@@ -271,6 +249,7 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
 	 * @throws IOException
 	 */
 	public void tile(
@@ -282,12 +261,14 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		final long maxC;
 		final long maxR;
 		final long maxZ;
-		
+
 		switch ( orientation )
 		{
 		case XZ:
@@ -306,10 +287,6 @@ public class Tiler
 			maxZ = sourceInterval.dimension( 2 ) - 1;
 		}
 		
-//		System.out.println( "maxZ:" + maxZ );
-//		System.out.println( "maxR:" + maxR );
-//		System.out.println( "maxC:" + maxC );
-		
 		tile(
 				sourceInterval,
 				orientation,
@@ -325,7 +302,9 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles,
+				bgValue );
 	}
 	
 	
@@ -343,6 +322,7 @@ public class Tiler
 	 * @param format
 	 * @param quality
 	 * @param type
+	 * @param bgValue background pixel value
 	 * @throws IOException
 	 */
 	public void tile(
@@ -353,7 +333,9 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		tile(
 				source,
@@ -364,7 +346,9 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles,
+				bgValue );
 	}
 	
 	
@@ -389,6 +373,7 @@ public class Tiler
 	 * @param quality quality for jpg-compression if format is "jpg"
 	 * @param type the type of export tiles, e.g.
 	 * 		{@link BufferedImage#TYPE_BYTE_GRAY}
+	 * @param bgValue background pixel value
 	 * @throws IOException
 	 */
 	public void tile(
@@ -405,7 +390,9 @@ public class Tiler
 			final String tilePattern,
 			final String format,
 			final float quality,
-			final int type ) throws IOException
+			final int type,
+			final boolean ignoreEmptyTiles,
+			final int bgValue ) throws IOException
 	{
 		tile(
 				source,
@@ -422,6 +409,8 @@ public class Tiler
 				tilePattern,
 				format,
 				quality,
-				type );
+				type,
+				ignoreEmptyTiles,
+				bgValue );
 	}
 }

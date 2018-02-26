@@ -39,12 +39,14 @@ package org.catmaid;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
-import java.io.IOException;
-import java.lang.ref.SoftReference;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 
 import javax.imageio.ImageIO;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import net.imglib2.AbstractInterval;
 import net.imglib2.AbstractLocalizable;
@@ -122,30 +124,17 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			return ( int )( value ^ ( value >>> 32 ) );
 		}
 	}
-	
+
 	class Entry
 	{
-		final protected Key key;
-		final protected int[] data;
+		final int[] data;
 		
-		public Entry( final Key key, final int[] data )
+		public Entry( final int[] data )
 		{
-			this.key = key;
 			this.data = data;
 		}
-		
-		@Override
-		public void finalize()
-		{
-			synchronized ( cache )
-			{
-//				System.out.println( "finalizing..." );
-				cache.remove( key );
-//				System.out.println( cache.size() + " tiles chached." );
-			}
-		}
 	}
-	
+
 	public class CATMAIDRandomAccess extends AbstractLocalizable implements RandomAccess< ARGBType >
 	{
 		protected long r, c;
@@ -590,14 +579,15 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			return copy();
 		}
 	}
-	
-	final protected HashMap< Key, SoftReference< Entry > > cache = new HashMap< CATMAIDRandomAccessibleInterval.Key, SoftReference< Entry > >();
-	final protected String urlFormat;
-	final protected long rows, cols, s;
-	final protected int tileWidth, tileHeight;
-	final protected double scale;
-	
-	
+
+	private static final int MAX_CACHE_SIZE = 2048;
+
+	final private Cache< Key, Entry > tileCache;
+	final private String urlFormat;
+	final private long rows, cols, s;
+	final private int tileWidth, tileHeight;
+	final private double scale;
+
 	public CATMAIDRandomAccessibleInterval(
 			final String urlFormat,
 			final long width,
@@ -605,7 +595,8 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 			final long depth,
 			final long s,
 			final int tileWidth,
-			final int tileHeight )
+			final int tileHeight,
+			final int cacheSize )
 	{
 		super( 3 );
 		this.urlFormat = urlFormat;
@@ -618,8 +609,12 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		max[ 0 ] = ( long )( width * scale ) - 1;
 		max[ 1 ] = ( long )( height * scale ) - 1;
 		max[ 2 ] = depth - 1;
+		tileCache = CacheBuilder.newBuilder()
+						.maximumSize(cacheSize > 0 ? cacheSize : MAX_CACHE_SIZE)
+						.weakValues()
+						.build();
 	}
-	
+
 	@Override
 	public int numDimensions()
 	{
@@ -646,6 +641,7 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		}
 		catch ( final OutOfMemoryError e )
 		{
+			System.err.println("Out of memory error while fetching tile (" + c + "," + r + "," + z + "). Trying to recover");
 			System.gc();
 			return fetchPixels2( r, c, z );
 		}
@@ -653,50 +649,38 @@ public class CATMAIDRandomAccessibleInterval extends AbstractInterval implements
 		
 	protected int[] fetchPixels2( final long r, final long c, final long z )
 	{
+		Entry tileEntry = null;
 		final Key key = new Key( r, c, z );
-		synchronized ( cache )
-		{
-			final SoftReference< Entry > cachedReference = cache.get( key );
-			if ( cachedReference != null )
-			{
-				final Entry cachedEntry = cachedReference.get();
-				if ( cachedEntry != null )
-					return cachedEntry.data;
-			}
-			
-			final String urlString = String.format( urlFormat, s, scale, c * tileWidth, r * tileHeight, z, tileWidth, tileHeight, r, c );
+		try {
+			tileEntry = tileCache.get(key, new Callable<Entry>() {
+				@Override
+				public Entry call() {
+					final String urlString = String.format( urlFormat, s, scale, c * tileWidth, r * tileHeight, z, tileWidth, tileHeight, r, c );
+					final int[] pixels = new int[ tileWidth * tileHeight ];
+					try {
+						System.out.println( "Load s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+						final URL url = new URL( urlString );
+						final BufferedImage jpg = ImageIO.read( url );
 
-			final int[] pixels = new int[ tileWidth * tileHeight ];
-			try
-			{
-				final URL url = new URL( urlString );
-//				final Image image = toolkit.createImage( url );
-			    final BufferedImage jpg = ImageIO.read( url );
-			    
-				/* This gymnastic is necessary to get reproducible gray
-				 * values, just opening a JPG or PNG, even when saved by
-				 * ImageIO, and grabbing its pixels results in gray values
-				 * with a non-matching gamma transfer function, I cannot tell
-				 * why... */
-			    final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
-				image.createGraphics().drawImage( jpg, 0, 0, null );
-				final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
-				pg.grabPixels();
-				
-				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
-//				System.out.println( "success loading r=" + r + " c=" + c + " url(" + urlString + ")" );
-				
-			}
-			catch (final IOException e)
-			{
-				System.out.println( "failed loading r=" + r + " c=" + c + " url(" + urlString + ")" );
-				cache.put( key, new SoftReference< Entry >( new Entry( key, pixels ) ) );
-			}
-			catch (final InterruptedException e)
-			{
-				e.printStackTrace();
-			}
-			return pixels;
+						/* This gymnastic is necessary to get reproducible gray
+						 * values, just opening a JPG or PNG, even when saved by
+						 * ImageIO, and grabbing its pixels results in gray values
+						 * with a non-matching gamma transfer function, I cannot tell
+						 * why... */
+						final BufferedImage image = new BufferedImage( tileWidth, tileHeight, BufferedImage.TYPE_INT_RGB );
+						image.createGraphics().drawImage( jpg, 0, 0, null );
+						final PixelGrabber pg = new PixelGrabber( image, 0, 0, tileWidth, tileHeight, pixels, 0, tileWidth );
+						pg.grabPixels();
+						System.out.println( "Successfully loaded  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+					} catch (final Exception e) {
+						System.out.println( "Failed loading  s=" + s + " r=" + r + " c=" + c + " z=" + z + " url(" + urlString + ")" );
+					}
+					return new Entry(pixels);
+				}
+			});
+		} catch (ExecutionException ee) {
+			ee.printStackTrace();
 		}
+		return tileEntry != null ? tileEntry.data : null;
 	}
 }
